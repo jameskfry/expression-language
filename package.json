@@ -1,6 +1,6 @@
 {
   "name": "expression-language",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Javascript implementation of symfony/expression-language",
   "main": "lib/ExpressionLanguage.js",
   "scripts": {
@@ -8,7 +8,9 @@
     "test": "jest"
   },
   "jest": {
-    "testPathIgnorePatterns": ["<rootDir>/lib"]
+    "testPathIgnorePatterns": [
+      "<rootDir>/lib"
+    ]
   },
   "keywords": [
     "expression",
@@ -17,11 +19,12 @@
   "author": "James K Fry",
   "license": "MIT",
   "devDependencies": {
+    "@babel/cli": "^7.7.7",
+    "@babel/core": "^7.7.7",
     "@babel/plugin-proposal-class-properties": "^7.7.4",
     "@babel/plugin-transform-modules-commonjs": "^7.7.5",
     "@babel/plugin-transform-runtime": "^7.6.2",
     "@babel/preset-env": "^7.7.7",
-    "babel-cli": "^6.26.0",
     "jest": "^24.9.0"
   }
 }
