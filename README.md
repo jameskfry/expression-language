@@ -11,13 +11,13 @@ let expressionLanguage = new ExpressionLanguage();
 ```
 #### Basic
 ```javascript
-let result = expressionLanguage.evaluate("1 + 1");
+let result = expressionLanguage.evaluate('1 + 1');
 // result is 2.
 ```
 #### Multiple clauses
 ```javascript
 let result = expressionLanguage.evaluate(
-    "a > 0 && b != a", 
+    'a > 0 && b != a', 
     {
         a: 1, 
         b: 2
@@ -27,7 +27,7 @@ let result = expressionLanguage.evaluate(
 ```
 #### Object and Array access
 ```javascript
-let expression = "a[2] === 'three' and b.myMethod(a[1]) === 'bar two'";
+let expression = 'a[2] === "three" and b.myMethod(a[1]) === "bar two"';
 let values = {
     a: ["one", "two", "three"], 
     b: {
