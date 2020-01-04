@@ -15,7 +15,7 @@ export function tokenize(expression) {
         }
 
         let number = extractNumber(expression.substr(cursor));
-        if (number) {
+        if (number !== null) {
             // numbers
             number = parseFloat(number);  // floats
             tokens.push(new Token(Token.NUMBER_TYPE, number, cursor + 1));
@@ -44,7 +44,7 @@ export function tokenize(expression) {
                 }
                 else {
                     let str = extractString(expression.substr(cursor));
-                    if (str) {
+                    if (str !== null) {
                         //console.log("adding string: " + str);
                         tokens.push(new Token(Token.STRING_TYPE, str, cursor + 1));
                         cursor += (str.length + 2);

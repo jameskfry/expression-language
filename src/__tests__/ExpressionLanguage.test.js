@@ -189,6 +189,16 @@ function getEvaluateData() {
             null
         ],
         [
+            // Expression
+            'a > 0',
+            // Values
+            {a: 1},
+            // Expected Outcome
+            true,
+            // Provider
+            null
+        ],
+        [
             'foo.getFirst() + bar.getSecond()',
             {
                 foo: {

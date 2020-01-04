@@ -1,6 +1,6 @@
 {
   "name": "expression-language",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Javascript implementation of symfony/expression-language",
   "main": "lib/ExpressionLanguage.js",
   "scripts": {
