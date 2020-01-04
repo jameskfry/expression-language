@@ -266,12 +266,26 @@ function getEvaluateData() {
                 a: ["one", "two", "three"],
                 b: {
                     myProperty: "foo",
-                    myMethod: (word, second, third) => {
+                    myMethod: (word) => {
                         return "bar " + word;
                     }
                 }
             },
             "bar two",
+            null
+        ],
+        [
+            'a[2] === "three" and b.myMethod(a[1]) === "bar two"',
+            {
+                a: ["one", "two", "three"],
+                b: {
+                    myProperty: "foo",
+                    myMethod: (word) => {
+                        return "bar " + word;
+                    }
+                }
+            },
+            true,
             null
         ]
     ];

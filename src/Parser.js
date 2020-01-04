@@ -358,9 +358,7 @@ export default class Parser {
 
                 if (this.tokenStream.current.test(Token.PUNCTUATION_TYPE, "(")) {
                     type = GetAttrNode.METHOD_CALL;
-                    console.log("Is a method call. Getting arguments...");
                     for (let n of Object.values(this.parseArguments().nodes)) {
-                        console.log("Adding argument: " + n.toString());
                         _arguments.addElement(n);
                     }
                 }
