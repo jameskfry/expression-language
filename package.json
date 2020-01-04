@@ -1,8 +1,8 @@
 {
   "name": "expression-language",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Javascript implementation of symfony/expression-language",
-  "main": "lib/ExpressionLanguage.js",
+  "main": "lib/index.js",
   "scripts": {
     "prepublish": "rm -rf lib && babel src -d lib",
     "test": "jest"
