@@ -10,6 +10,7 @@ import ArrayProvider from "./Provider/ArrayProvider";
 export default ExpressionLanguage;
 
 export {
+    ExpressionLanguage,
     Parser,
     tokenize,
     ExpressionFunction,
