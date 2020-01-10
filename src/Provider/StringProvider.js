@@ -1,5 +1,12 @@
 import ExpressionFunction from "../ExpressionFunction";
 import AbstractProvider from "./AbstractProvider";
+import explode from "locutus/php/strings/explode";
+import strlen from "locutus/php/strings/strlen";
+import strtolower from "locutus/php/strings/strtolower";
+import strtoupper from "locutus/php/strings/strtoupper";
+import substr from "locutus/php/strings/substr";
+import strstr from "locutus/php/strings/strstr";
+import stristr from "locutus/php/strings/stristr";
 
 export default class StringProvider extends AbstractProvider {
     getFunctions() {
@@ -7,78 +14,49 @@ export default class StringProvider extends AbstractProvider {
             new ExpressionFunction('strtolower', (str) => {
                 return 'strtolower(' + str + ')';
             }, (args, str) => {
-                if (typeof str === "string") {
-                    return str.toLocaleLowerCase();
-                }
-                return undefined;
+                return strtolower(str);
             }),
             new ExpressionFunction('strtoupper', (str) => {
                 return 'strtoupper(' + str + ')';
             }, (args, str) => {
-                if (typeof str === "string") {
-                    return str.toLocaleUpperCase()
-                }
-                return undefined;
+                return strtoupper(str);
             }),
             new ExpressionFunction('explode', (delimiter, string, limit='null') => {
                 return `explode(${delimiter}, ${string}, ${limit})`;
             }, (values, delimiter, string, limit=null) => {
-                //  discuss at: https://locutus.io/php/explode/
-                // original by: Kevin van Zonneveld (https://kvz.io)
-                //   example 1: explode(' ', 'Kevin van Zonneveld')
-                //   returns 1: [ 'Kevin', 'van', 'Zonneveld' ]
-
-                if (typeof delimiter === 'undefined' ||
-                    typeof string === 'undefined') {
-                    return null
+                return explode(delimiter, string, limit);
+            }),
+            new ExpressionFunction('strlen', function compiler(str) {
+                return `strlen(${str});`;
+            }, function evaluator(values, str) {
+                return strlen(str);
+            }),
+            new ExpressionFunction('strstr', function compiler(haystack, needle, before_needle) {
+                let remaining = '';
+                if (before_needle) {
+                    remaining = `, ${before_needle}`;
                 }
-                if (delimiter === '' ||
-                    delimiter === false ||
-                    delimiter === null) {
-                    return false
+                return `strstr(${haystack}, ${needle}${remaining});`;
+            }, function evaluator(values, haystack, needle, before_needle) {
+                return strstr(haystack, needle, before_needle);
+            }),
+            new ExpressionFunction('stristr', function compiler(haystack, needle, before_needle) {
+                let remaining = '';
+                if (before_needle) {
+                    remaining = `, ${before_needle}`;
                 }
-                if (typeof delimiter === 'function' ||
-                    typeof delimiter === 'object' ||
-                    typeof string === 'function' ||
-                    typeof string === 'object') {
-                    return {
-                        0: ''
-                    }
+                return `stristr(${haystack}, ${needle}${remaining});`;
+            }, function evaluator(values, haystack, needle, before_needle) {
+                return stristr(haystack, needle, before_needle);
+            }),
+            new ExpressionFunction('substr', function compiler(str, start, length) {
+                let remaining = '';
+                if (length) {
+                    remaining = `, ${length}`;
                 }
-                if (delimiter === true) {
-                    delimiter = '1'
-                }
-
-                // Here we go...
-                delimiter += '';
-                string += '';
-
-                var s = string.split(delimiter);
-
-                if (typeof limit === 'undefined') return s;
-
-                // Support for limit
-                if (limit === 0) limit = 1;
-
-                // Positive limit
-                if (limit > 0) {
-                    if (limit >= s.length) {
-                        return s
-                    }
-                    return s
-                        .slice(0, limit - 1)
-                        .concat([s.slice(limit - 1)
-                            .join(delimiter)
-                        ])
-                }
-
-                // Negative limit
-                if (-limit >= s.length) {
-                    return []
-                }
-
-                s.splice(s.length + limit);
-                return s
+                return `substr(${str}, ${start}${remaining});`;
+            }, function evaluator(values, str, start, length) {
+                return substr(str, start, length);
             })
         ]
     }

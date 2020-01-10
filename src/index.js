@@ -6,6 +6,7 @@ import Compiler from "./Compiler";
 import ArrayAdapter from "./Cache/ArrayAdapter";
 import StringProvider from "./Provider/StringProvider";
 import ArrayProvider from "./Provider/ArrayProvider";
+import DateProvider from "./Provider/DateProvider";
 
 export default ExpressionLanguage;
 
@@ -17,5 +18,6 @@ export {
     Compiler,
     ArrayAdapter,
     StringProvider,
-    ArrayProvider
+    ArrayProvider,
+    DateProvider
 }
