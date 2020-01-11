@@ -285,14 +285,15 @@ function getEvaluateData() {
             null
         ],
         [
-            'a[2] === "three" and b.myMethod(a[1]) === "bar two"',
+            'a[2] === "three" and b.myMethod(a[1]) === "bar two" and (b.myProperty == "foo" or b["myProperty"] == "foo") and b["property with spaces and &*()*%$##@% characters"] == "fun"',
             {
                 a: ["one", "two", "three"],
                 b: {
                     myProperty: "foo",
                     myMethod: (word) => {
                         return "bar " + word;
-                    }
+                    },
+                    ["property with spaces and &*()*%$##@% characters"]: 'fun'
                 }
             },
             true,
