@@ -58,6 +58,10 @@ function getTokenizeData() {
         [
             [new Token(Token.STRING_TYPE, '#foo', 1)],
             '"#foo"',
+        ],
+        [
+            [new Token(Token.STRING_TYPE, 'foo["bar"]', 1)],
+            "'foo[\"bar\"]'"
         ]
     ];
 }
@@ -90,6 +94,8 @@ test('tokenize', () => {
         let tokens = tokenizeData[0],
             expression = tokenizeData[1];
         tokens.push(new Token(Token.EOF_TYPE, null, expression.length + 1));
+
+        //console.log("Testing: ", expression);
 
         let generatedStream = tokenize(expression),
             expectedStream = new TokenStream(expression, tokens);

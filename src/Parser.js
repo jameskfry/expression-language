@@ -83,7 +83,7 @@ export default class Parser {
         let token = this.tokenStream.current;
         this.nestedExecutions++;
         if (this.nestedExecutions > 100) {
-            throw new Error("Way to may executions.");
+            throw new Error("Way to many executions.");
         }
 
         //console.log("Parsing: ", token);

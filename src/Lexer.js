@@ -46,8 +46,9 @@ export function tokenize(expression) {
                     let str = extractString(expression.substr(cursor));
                     if (str !== null) {
                         //console.log("adding string: " + str);
-                        tokens.push(new Token(Token.STRING_TYPE, str, cursor + 1));
-                        cursor += (str.length + 2);
+                        tokens.push(new Token(Token.STRING_TYPE, str.captured, cursor + 1));
+                        cursor += (str.length);
+                        //console.log(`Extracted string: ${str.captured}; Remaining: ${expression.substr(cursor)}`, cursor, expression);
                     }
                     else {
                         let operator = extractOperator(expression.substr(cursor));
@@ -65,6 +66,7 @@ export function tokenize(expression) {
                                 if (name) {
                                     tokens.push(new Token(Token.NAME_TYPE, name, cursor + 1));
                                     cursor += name.length;
+                                    //console.log(`Extracted name: ${name}; Remaining: ${expression.substr(cursor)}`, cursor, expression)
                                 }
                                 else {
                                     throw new SyntaxError(`Unexpected character "${expression[cursor]}"`, cursor, expression);
@@ -103,6 +105,8 @@ function extractNumber(str) {
     return extracted;
 }
 
+
+const strRegex = /^"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'/s;
 /**
  *
  * @param str
@@ -111,10 +115,24 @@ function extractNumber(str) {
 function extractString(str) {
     let extracted = null;
 
-    let matches = str.match(/^"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'/s);
-    if (matches && matches.length > 0) {
-        //console.log("Matches: ", matches);
-        extracted = matches[1] ? matches[1] : matches[2];
+    if (["'", '"'].indexOf(str.substr(0, 1)) === -1) {
+        return extracted;
+    }
+
+    let m = strRegex.exec(str);
+    if (m !== null && m.length > 0) {
+        if (m[1]) {
+            extracted = {
+                captured: m[1]
+            };
+        }
+        else {
+            extracted = {
+                captured: m[2]
+            };
+        }
+
+        extracted.length = m[0].length;
     }
 
     return extracted;
