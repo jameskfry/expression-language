@@ -298,6 +298,15 @@ function getEvaluateData() {
             },
             true,
             null
+        ],
+        [
+            'a and !b',
+            {
+                a: true,
+                b: false
+            },
+            true,
+            null
         ]
     ];
 }

@@ -52,6 +52,10 @@ function getTokenizeData() {
             '..',
         ],
         [
+            [new Token(Token.OPERATOR_TYPE, '!', 1)],
+            '!',
+        ],
+        [
             [new Token(Token.STRING_TYPE, '#foo', 1)],
             "'#foo'",
         ],

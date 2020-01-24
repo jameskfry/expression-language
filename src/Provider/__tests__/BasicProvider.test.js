@@ -42,3 +42,15 @@ test('isset with dot notation', () => {
     let result2 = el.evaluate("isset(\"foo.bar.buzz\") and foo.bar.buzz == 'yep'", {foo: {bar: {buzz: 'yep'}}});
     expect(result2).toBe(true);
 });
+
+test('isset with ! operator', () => {
+    let el = new ExpressionLanguage(null, [new BasicProvider()]);
+    let result = el.evaluate("!isset(\"foo.baz\") and foo.bar == 'yep'", {foo: {bar: 'yep'}});
+    expect(result).toBe(true);
+});
+
+test('isset with not operator', () => {
+    let el = new ExpressionLanguage(null, [new BasicProvider()]);
+    let result = el.evaluate("not isset(\"foo.baz\") and foo.bar == 'yep'", {foo: {bar: 'yep'}});
+    expect(result).toBe(true);
+});
