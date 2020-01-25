@@ -199,6 +199,66 @@ function getEvaluateData() {
             null
         ],
         [
+            // Expression
+            'a >= 0',
+            // Values
+            {a: 1},
+            // Expected Outcome
+            true,
+            // Provider
+            null
+        ],
+        [
+            // Expression
+            'a <= 0',
+            // Values
+            {a: 1},
+            // Expected Outcome
+            false,
+            // Provider
+            null
+        ],
+        [
+            // Expression
+            'a != 0',
+            // Values
+            {a: 1},
+            // Expected Outcome
+            true,
+            // Provider
+            null
+        ],
+        [
+            // Expression
+            'a == 1',
+            // Values
+            {a: 1},
+            // Expected Outcome
+            true,
+            // Provider
+            null
+        ],
+        [
+            // Expression
+            'a === 1',
+            // Values
+            {a: 1},
+            // Expected Outcome
+            true,
+            // Provider
+            null
+        ],
+        [
+            // Expression
+            'a !== 1',
+            // Values
+            {a: 1},
+            // Expected Outcome
+            false,
+            // Provider
+            null
+        ],
+        [
             'foo.getFirst() + bar.getSecond()',
             {
                 foo: {
