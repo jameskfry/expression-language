@@ -367,6 +367,24 @@ function getEvaluateData() {
             },
             true,
             null
+        ],
+        [
+            'a in b',
+            {
+                a: "Dogs",
+                b: ["Cats", "Dogs"]
+            },
+            true,
+            null
+        ],
+        [
+            'a not in b',
+            {
+                a: "Dogs",
+                b: ["Cats", "Bags"]
+            },
+            true,
+            null
         ]
     ];
 }

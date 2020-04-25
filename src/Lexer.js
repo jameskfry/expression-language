@@ -143,7 +143,7 @@ const operators = [
     "&&","and","||","or", // Binary
     "+", "-", "*", "/", "%", "**", // Arithmetic
     "&", "|", "^", // Bitwise
-    "===", "!==", "!=", "==", "<=", ">=", "<", ">", "matches", "not in", "not", "!", // Comparison
+    "===", "!==", "!=", "==", "<=", ">=", "<", ">", "matches", "not in", "in", "not", "!", // Comparison
     "~", // String concatenation,
     '..' // Range function
 ];
