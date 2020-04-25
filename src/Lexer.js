@@ -147,6 +147,7 @@ const operators = [
     "~", // String concatenation,
     '..' // Range function
 ];
+const wordBasedOperators = ["and", "or", "matches", "not in", "in", "not"];
 /**
  *
  * @param str
@@ -156,7 +157,15 @@ function extractOperator(str) {
     let extracted = null;
     for (let operator of operators) {
         if (str.substr(0, operator.length) === operator) {
-            extracted = operator;
+            // If it is one of the word based operators, make sure there is a space after it
+            if (wordBasedOperators.indexOf(operator) >= 0) {
+                if (str.substr(0, operator.length + 1) === operator + " ") {
+                    extracted = operator;
+                }
+            }
+            else {
+                extracted = operator;
+            }
             break;
         }
     }

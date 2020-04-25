@@ -378,6 +378,26 @@ function getEvaluateData() {
             null
         ],
         [
+            'a in outputs["typesOfAnimalsAllowed"]',
+            {
+                a: "Dogs",
+                outputs: {
+                    typesOfAnimalsAllowed: ["Dogs", "Other"]
+                }
+            },
+            true,
+            null
+        ],
+        [
+            '"Other" in inputs["typesOfAnimalsAllowed"]',
+            {
+                inputs: {
+                    typesOfAnimalsAllowed: ["Dogs", "Other"]
+                }
+            },
+            true
+        ],
+        [
             'a not in b',
             {
                 a: "Dogs",
