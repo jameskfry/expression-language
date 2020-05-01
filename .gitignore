@@ -1,6 +1,6 @@
-###> Jetbrains ###
+# IDEs
+.vscode
 .idea
-###< Jetbrains ###
 
 ###> Mac OS ###
 .DS_Store

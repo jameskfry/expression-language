@@ -67,6 +67,7 @@ export default class Parser {
         this.names = names;
         this.objectMatches = {};
         this.cachedNames = null;
+        this.nestedExecutions = 0;
         //console.log("tokens: ", tokenStream.toString());
 
         let node = this.parseExpression();
@@ -83,7 +84,7 @@ export default class Parser {
         let token = this.tokenStream.current;
         this.nestedExecutions++;
         if (this.nestedExecutions > 100) {
-            throw new Error("Way to many executions.");
+            throw new Error("Way to many executions on '" + token.toString() + "' of '" + this.tokenStream.toString() + "'");
         }
 
         //console.log("Parsing: ", token);
