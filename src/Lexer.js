@@ -141,7 +141,7 @@ function extractString(str) {
 
 const operators = [
     "&&","and","||","or", // Binary
-    "+", "-", "*", "/", "%", "**", // Arithmetic
+    "+", "-", "**", "*", "/", "%", // Arithmetic
     "&", "|", "^", // Bitwise
     "===", "!==", "!=", "==", "<=", ">=", "<", ">", "matches", "not in", "in", "not", "!", // Comparison
     "~", // String concatenation,
