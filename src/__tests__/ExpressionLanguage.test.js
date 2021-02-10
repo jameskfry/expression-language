@@ -190,6 +190,16 @@ function getEvaluateData() {
         ],
         [
             // Expression
+            '2 ** 3',
+            // Values
+            {},
+            // Expected Outcome
+            8,
+            // Provider
+            null
+        ],
+        [
+            // Expression
             'a > 0',
             // Values
             {a: 1},
