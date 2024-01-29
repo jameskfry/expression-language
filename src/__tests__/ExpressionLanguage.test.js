@@ -180,6 +180,16 @@ function getEvaluateData() {
     return [
         [
             // Expression
+            '1.0',
+            // Values
+            {},
+            // Expected Outcome
+            1,
+            // Provider
+            null
+        ],
+        [
+            // Expression
             '1 + 1',
             // Values
             {},
