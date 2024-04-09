@@ -17,9 +17,15 @@ export function tokenize(expression) {
         let number = extractNumber(expression.substr(cursor));
         if (number !== null) {
             // numbers
-            number = parseFloat(number);  // floats
+            const numberLength = number.length;
+            if (number.indexOf(".") === -1) {
+                number = parseInt(number);
+            }
+            else {
+                number = parseFloat(number);
+            }
             tokens.push(new Token(Token.NUMBER_TYPE, number, cursor + 1));
-            cursor += number.toString().length;
+            cursor += numberLength;
         } else {
             if ('([{'.indexOf(expression[cursor]) >= 0) {
                 // opening bracket
@@ -95,12 +101,6 @@ function extractNumber(str) {
     let matches = str.match(/^[0-9]+(?:.[0-9]+)?/);
     if (matches && matches.length > 0) {
         extracted = matches[0];
-        if (extracted.indexOf(".") === -1) {
-            extracted = parseInt(extracted);
-        }
-        else {
-            extracted = parseFloat(extracted);
-        }
     }
     return extracted;
 }
