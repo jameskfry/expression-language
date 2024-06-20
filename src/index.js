@@ -4,6 +4,7 @@ import Parser from "./Parser";
 import ExpressionFunction from "./ExpressionFunction";
 import Compiler from "./Compiler";
 import ArrayAdapter from "./Cache/ArrayAdapter";
+import AbstractProvider from "./Provider/AbstractProvider";
 import BasicProvider from "./Provider/BasicProvider";
 import StringProvider from "./Provider/StringProvider";
 import ArrayProvider from "./Provider/ArrayProvider";
@@ -18,6 +19,7 @@ export {
     ExpressionFunction,
     Compiler,
     ArrayAdapter,
+    AbstractProvider,
     BasicProvider,
     StringProvider,
     ArrayProvider,
