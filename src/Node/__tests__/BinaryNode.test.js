@@ -49,6 +49,8 @@ function getEvaluateData()
         [[1, 2, 3], new BinaryNode('..', new ConstantNode(1), new ConstantNode(3))],
 
         [true, new BinaryNode('matches', new ConstantNode('abc'), new ConstantNode('/^[a-z]+$/'))],
+
+        [true, new BinaryNode('contains', new ConstantNode('abcd'), new ConstantNode('BC'))],
     ];
 }
 
@@ -98,6 +100,8 @@ function getCompileData()
         ['range(1, 3)', new BinaryNode('..', new ConstantNode(1), new ConstantNode(3))],
 
         ['/^[a-z]+\$/i.test("abc")', new BinaryNode('matches', new ConstantNode('abc'), new ConstantNode('/^[a-z]+$/i', true))],
+
+        ['("abc".toString().toLowerCase().includes("B".toString().toLowerCase())', new BinaryNode('contains', new ConstantNode('abc'), new ConstantNode('B', false))],
     ];
 }
 
@@ -147,6 +151,8 @@ function getDumpData()
         ['(1 .. 3)', new BinaryNode('..', new ConstantNode(1), new ConstantNode(3))],
 
         ['("abc" matches "/^[a-z]+/i$/")', new BinaryNode('matches', new ConstantNode('abc'), new ConstantNode('/^[a-z]+/i$/'))],
+
+        ['("abc" contains "B")', new BinaryNode('contains', new ConstantNode('abc'), new ConstantNode('B'))],
     ];
 }
 

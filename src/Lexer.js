@@ -143,11 +143,11 @@ const operators = [
     "&&","and","||","or", // Binary
     "+", "-", "**", "*", "/", "%", // Arithmetic
     "&", "|", "^", // Bitwise
-    "===", "!==", "!=", "==", "<=", ">=", "<", ">", "matches", "not in", "in", "not", "!", // Comparison
+    "===", "!==", "!=", "==", "<=", ">=", "<", ">", "contains", "matches", "not in", "in", "not", "!", // Comparison
     "~", // String concatenation,
     '..' // Range function
 ];
-const wordBasedOperators = ["and", "or", "matches", "not in", "in", "not"];
+const wordBasedOperators = ["and", "or", "contains", "matches", "not in", "in", "not"];
 /**
  *
  * @param str

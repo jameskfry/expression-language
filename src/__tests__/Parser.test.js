@@ -68,6 +68,10 @@ function getParseData() {
             new BinaryNode('matches', new ConstantNode('foo'), new ConstantNode('/foo/')),
             '"foo" matches "/foo/"'
         ],
+        [
+            new BinaryNode('contains', new ConstantNode('foo'), new ConstantNode('fo')),
+            '"foo" contains "fo"'
+        ],
         // chained calls
         [
             createGetAttrNode(

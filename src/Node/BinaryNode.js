@@ -34,6 +34,16 @@ export default class BinaryNode extends Node {
             return;
         }
 
+        if ('contains' === operator) {
+            compiler.raw('(')
+                .compile(this.nodes.left)
+                .raw(".toString().toLowerCase().includes(")
+                .compile(this.nodes.right)
+                .raw(".toString().toLowerCase())");
+
+            return;
+        }
+
         if (BinaryNode.functions[operator] !== undefined) {
             compiler.raw(`${BinaryNode.functions[operator]}(`)
                 .compile(this.nodes.left)
@@ -134,6 +144,8 @@ export default class BinaryNode extends Node {
                 return left / right;
             case '%':
                 return left % right;
+            case 'contains':
+                return left.toString().toLowerCase().includes(right.toString().toLowerCase());
             case 'matches':
                 let res = right.match(BinaryNode.regex_expression);
                 let regexp = new RegExp(res[1], res[2]);

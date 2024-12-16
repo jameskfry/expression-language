@@ -42,6 +42,7 @@ export default class Parser {
         '<=': {'precedence': 20, 'associativity': OPERATOR_LEFT},
         'not in': {'precedence': 20, 'associativity': OPERATOR_LEFT},
         'in': {'precedence': 20, 'associativity': OPERATOR_LEFT},
+        'contains': {'precedence': 20, 'associativity': OPERATOR_LEFT},
         'matches': {'precedence': 20, 'associativity': OPERATOR_LEFT},
         '..': {'precedence': 25, 'associativity': OPERATOR_LEFT},
         '+': {'precedence': 30, 'associativity': OPERATOR_LEFT},
