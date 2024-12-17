@@ -149,7 +149,7 @@ const operators = [
     "~", // String concatenation,
     '..' // Range function
 ];
-const wordBasedOperators = ["and", "or", "contains", "matches", "starts with", "ends with", "not in", "in", "not"];
+const wordBasedOperators = ["and", "or", "matches", "contains", "starts with", "ends with", "not in", "in", "not"];
 /**
  *
  * @param str
