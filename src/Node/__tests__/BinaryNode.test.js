@@ -51,6 +51,10 @@ function getEvaluateData()
         [true, new BinaryNode('matches', new ConstantNode('abc'), new ConstantNode('/^[a-z]+$/'))],
 
         [true, new BinaryNode('contains', new ConstantNode('abcd'), new ConstantNode('BC'))],
+
+        [true, new BinaryNode('starts with', new ConstantNode('abcd'), new ConstantNode('AB'))],
+
+        [true, new BinaryNode('ends with', new ConstantNode('abcd'), new ConstantNode('CD'))],
     ];
 }
 
@@ -102,6 +106,8 @@ function getCompileData()
         ['/^[a-z]+\$/i.test("abc")', new BinaryNode('matches', new ConstantNode('abc'), new ConstantNode('/^[a-z]+$/i', true))],
 
         ['("abc".toString().toLowerCase().includes("B".toString().toLowerCase())', new BinaryNode('contains', new ConstantNode('abc'), new ConstantNode('B', false))],
+        ['("abc".toString().toLowerCase().startsWith("AB".toString().toLowerCase())', new BinaryNode('starts with', new ConstantNode('abc'), new ConstantNode('AB', false))],
+        ['("abc".toString().toLowerCase().endsWith("BC".toString().toLowerCase())', new BinaryNode('ends with', new ConstantNode('abc'), new ConstantNode('BC', false))],
     ];
 }
 
@@ -153,6 +159,8 @@ function getDumpData()
         ['("abc" matches "/^[a-z]+/i$/")', new BinaryNode('matches', new ConstantNode('abc'), new ConstantNode('/^[a-z]+/i$/'))],
 
         ['("abc" contains "B")', new BinaryNode('contains', new ConstantNode('abc'), new ConstantNode('B'))],
+        ['("abc" starts with "AB")', new BinaryNode('starts with', new ConstantNode('abc'), new ConstantNode('AB'))],
+        ['("abc" ends with "BC")', new BinaryNode('ends with', new ConstantNode('abc'), new ConstantNode('BC'))],
     ];
 }
 

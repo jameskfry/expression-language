@@ -72,6 +72,14 @@ function getParseData() {
             new BinaryNode('contains', new ConstantNode('foo'), new ConstantNode('fo')),
             '"foo" contains "fo"'
         ],
+        [
+            new BinaryNode('starts with', new ConstantNode('foo'), new ConstantNode('fo')),
+            '"foo" starts with "fo"'
+        ],
+        [
+            new BinaryNode('ends with', new ConstantNode('foo'), new ConstantNode('oo')),
+            '"foo" ends with "oo"'
+        ],
         // chained calls
         [
             createGetAttrNode(

@@ -32,12 +32,26 @@ export default class BinaryNode extends Node {
                 .compile(this.nodes.left)
                 .raw(")");
             return;
-        }
-
-        if ('contains' === operator) {
+        } else if ('contains' === operator) {
             compiler.raw('(')
                 .compile(this.nodes.left)
                 .raw(".toString().toLowerCase().includes(")
+                .compile(this.nodes.right)
+                .raw(".toString().toLowerCase())");
+
+            return;
+        } else if ('starts with' === operator) {
+            compiler.raw('(')
+                .compile(this.nodes.left)
+                .raw(".toString().toLowerCase().startsWith(")
+                .compile(this.nodes.right)
+                .raw(".toString().toLowerCase())");
+
+            return;
+        } else if ('ends with' === operator) {
+            compiler.raw('(')
+                .compile(this.nodes.left)
+                .raw(".toString().toLowerCase().endsWith(")
                 .compile(this.nodes.right)
                 .raw(".toString().toLowerCase())");
 
@@ -144,12 +158,16 @@ export default class BinaryNode extends Node {
                 return left / right;
             case '%':
                 return left % right;
-            case 'contains':
-                return left.toString().toLowerCase().includes(right.toString().toLowerCase());
             case 'matches':
                 let res = right.match(BinaryNode.regex_expression);
                 let regexp = new RegExp(res[1], res[2]);
                 return regexp.test(left);
+            case 'contains':
+                return left.toString().toLowerCase().includes(right.toString().toLowerCase());
+            case 'starts with':
+                return left.toString().toLowerCase().startsWith(right.toString().toLowerCase());
+            case 'ends with':
+                return left.toString().toLowerCase().endsWith(right.toString().toLowerCase());
         }
     };
 
