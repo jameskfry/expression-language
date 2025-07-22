@@ -74,11 +74,16 @@ let result = expressionLanguage.evaluate(expression, values);
 
 ## Continuous Integration and Deployment
 
-This package is automatically published to npm when changes are pushed to the main branch using GitHub Actions.
+This package uses GitHub Actions for automated workflows:
+
+1. **NPM Publishing**: Automatically publishes to npm when the package version changes
+2. **GitHub Releases**: Automatically creates GitHub releases with changelogs and distribution files
 
 ### For Maintainers
 
-If you're maintaining this package, you'll need to set up an NPM authentication token:
+If you're maintaining this package, you'll need to set up the following:
+
+#### NPM Publishing
 
 1. Generate an npm access token with publish permissions:
    - Go to npmjs.com and log in
@@ -92,5 +97,16 @@ If you're maintaining this package, you'll need to set up an NPM authentication 
    - Value: Your npm access token
    - Click "Add secret"
 
-Once set up, any push to the main branch will trigger the workflow to test and publish the package.
+#### GitHub Releases
+
+The GitHub release workflow automatically:
+- Checks if the package version has changed
+- Builds the project to generate distribution files
+- Creates a GitHub release with the new version tag
+- Generates a changelog based on commit messages
+- Attaches the distribution files to the release
+
+No additional setup is required for GitHub releases as it uses the default `GITHUB_TOKEN`.
+
+Once set up, any push to the main branch will trigger these workflows when the package version changes.
 

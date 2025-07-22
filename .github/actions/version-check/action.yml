@@ -1,0 +1,41 @@
+name: 'Package Version Check'
+description: 'Checks if the package version has changed compared to the published version'
+inputs:
+  package-name:
+    description: 'Name of the package to check'
+    required: true
+outputs:
+  current-version:
+    description: 'Current version from package.json'
+  published-version:
+    description: 'Latest published version from npm'
+  changed:
+    description: 'Whether the version has changed (true/false)'
+runs:
+  using: "composite"
+  steps:
+    - name: Get current version
+      id: package-version
+      shell: bash
+      run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+    - name: Check published version
+      id: npm-version
+      shell: bash
+      run: |
+        PUBLISHED_VERSION=$(npm view ${{ inputs.package-name }} version 2>/dev/null || echo "0.0.0")
+        echo "published=$PUBLISHED_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Compare versions
+      id: version-compare
+      shell: bash
+      run: |
+        if [ "${{ steps.package-version.outputs.version }}" != "${{ steps.npm-version.outputs.published }}" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "Package version changed from ${{ steps.npm-version.outputs.published }} to ${{ steps.package-version.outputs.version }}"
+        else
+          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "Package version unchanged: ${{ steps.package-version.outputs.version }}"
+        fi
+        echo "current-version=${{ steps.package-version.outputs.version }}" >> $GITHUB_OUTPUT
+        echo "published-version=${{ steps.npm-version.outputs.published }}" >> $GITHUB_OUTPUT

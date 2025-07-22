@@ -26,26 +26,11 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Get current version
-        id: package-version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: Check published version
-        id: npm-version
-        run: |
-          PUBLISHED_VERSION=$(npm view expression-language version 2>/dev/null || echo "0.0.0")
-          echo "published=$PUBLISHED_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Compare versions
+      - name: Check version change
         id: version-check
-        run: |
-          if [ "${{ steps.package-version.outputs.version }}" != "${{ steps.npm-version.outputs.published }}" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Package version changed from ${{ steps.npm-version.outputs.published }} to ${{ steps.package-version.outputs.version }}"
-          else
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "Package version unchanged: ${{ steps.package-version.outputs.version }}"
-          fi
+        uses: ./.github/actions/version-check
+        with:
+          package-name: 'expression-language'
 
       - name: Build and publish package
         if: steps.version-check.outputs.changed == 'true'
