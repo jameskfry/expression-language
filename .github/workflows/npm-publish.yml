@@ -1,11 +1,5 @@
 name: Publish Package to npm
 
-# This workflow automatically publishes the package to npm with version incrementing
-# Version incrementing rules:
-# - By default: patch increment (e.g., 1.3.1 → 1.3.2)
-# - If commit message contains "MINOR": minor increment (e.g., 1.3.1 → 1.4.0)
-# - If commit message contains "MAJOR": major increment (e.g., 1.3.1 → 2.0.0)
-
 on:
   push:
     branches:
@@ -31,39 +25,30 @@ jobs:
 
       - name: Run tests
         run: npm test
-        
-      # Extract the latest commit message to determine version increment type
-      - name: Get latest commit message
-        id: get-commit-message
-        run: echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
-        
-      # Determine whether to do a patch, minor, or major version increment based on commit message
-      - name: Determine version increment type
-        id: version-type
+
+      - name: Get current version
+        id: package-version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Check published version
+        id: npm-version
         run: |
-          COMMIT_MSG="${{ steps.get-commit-message.outputs.message }}"
-          if [[ "$COMMIT_MSG" == *"MAJOR"* ]]; then
-            echo "increment=major" >> $GITHUB_OUTPUT
-          elif [[ "$COMMIT_MSG" == *"MINOR"* ]]; then
-            echo "increment=minor" >> $GITHUB_OUTPUT
+          PUBLISHED_VERSION=$(npm view expression-language version 2>/dev/null || echo "0.0.0")
+          echo "published=$PUBLISHED_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Compare versions
+        id: version-check
+        run: |
+          if [ "${{ steps.package-version.outputs.version }}" != "${{ steps.npm-version.outputs.published }}" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Package version changed from ${{ steps.npm-version.outputs.published }} to ${{ steps.package-version.outputs.version }}"
           else
-            # Default to patch increment if no specific keyword is found
-            echo "increment=patch" >> $GITHUB_OUTPUT
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "Package version unchanged: ${{ steps.package-version.outputs.version }}"
           fi
-          
-      # Use npm version to update package.json and create a git tag
-      - name: Increment version
-        run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
-          # The [skip ci] in the commit message prevents triggering another workflow run
-          npm version ${{ steps.version-type.outputs.increment }} -m "Bump version to %s [skip ci]"
-          
-      # Push the version update and tags back to the repository
-      - name: Push version update
-        run: git push --follow-tags
 
       - name: Build and publish package
+        if: steps.version-check.outputs.changed == 'true'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
