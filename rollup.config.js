@@ -13,7 +13,7 @@ export default [
         name: 'ExpressionLanguage',
         file: 'dist/expression-language.js',
         format: 'umd',
-        exports: 'default',
+        exports: 'named',
         globals: {
           'locutus': 'locutus'
         }
@@ -22,7 +22,7 @@ export default [
         name: 'ExpressionLanguage',
         file: pkg.browser,
         format: 'umd',
-        exports: 'default',
+        exports: 'named',
         plugins: [terser()],
         globals: {
           'locutus': 'locutus'

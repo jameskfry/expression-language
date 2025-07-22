@@ -35,7 +35,7 @@ let expressionLanguage = new ExpressionLanguage();
 <script src="https://unpkg.com/expression-language/dist/expression-language.min.js"></script>
 <script>
   // The library is available as a global ExpressionLanguage object
-  const expressionLanguage = new ExpressionLanguage();
+  const expressionLanguage = new ExpressionLanguage.ExpressionLanguage();
 </script>
 ```
 
