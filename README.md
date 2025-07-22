@@ -26,7 +26,7 @@ You can also use this library directly in the browser by including it via a scri
 
 ### NPM/Yarn Setup
 ```javascript
-import ExpressionLanguage from "expression-language";
+import { ExpressionLanguage } from "expression-language";
 let expressionLanguage = new ExpressionLanguage();
 ```
 
