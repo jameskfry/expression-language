@@ -1,0 +1,69 @@
+name: Publish Package to npm
+
+# This workflow automatically publishes the package to npm with version incrementing
+# Version incrementing rules:
+# - By default: patch increment (e.g., 1.3.1 → 1.3.2)
+# - If commit message contains "MINOR": minor increment (e.g., 1.3.1 → 1.4.0)
+# - If commit message contains "MAJOR": major increment (e.g., 1.3.1 → 2.0.0)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org/'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+        
+      # Extract the latest commit message to determine version increment type
+      - name: Get latest commit message
+        id: get-commit-message
+        run: echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+        
+      # Determine whether to do a patch, minor, or major version increment based on commit message
+      - name: Determine version increment type
+        id: version-type
+        run: |
+          COMMIT_MSG="${{ steps.get-commit-message.outputs.message }}"
+          if [[ "$COMMIT_MSG" == *"MAJOR"* ]]; then
+            echo "increment=major" >> $GITHUB_OUTPUT
+          elif [[ "$COMMIT_MSG" == *"MINOR"* ]]; then
+            echo "increment=minor" >> $GITHUB_OUTPUT
+          else
+            # Default to patch increment if no specific keyword is found
+            echo "increment=patch" >> $GITHUB_OUTPUT
+          fi
+          
+      # Use npm version to update package.json and create a git tag
+      - name: Increment version
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          # The [skip ci] in the commit message prevents triggering another workflow run
+          npm version ${{ steps.version-type.outputs.increment }} -m "Bump version to %s [skip ci]"
+          
+      # Push the version update and tags back to the repository
+      - name: Push version update
+        run: git push --follow-tags
+
+      - name: Build and publish package
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -41,3 +41,25 @@ let result = expressionLanguage.evaluate(expression, values);
 // result is true
 ```
 
+## Continuous Integration and Deployment
+
+This package is automatically published to npm when changes are pushed to the main branch using GitHub Actions.
+
+### For Maintainers
+
+If you're maintaining this package, you'll need to set up an NPM authentication token:
+
+1. Generate an npm access token with publish permissions:
+   - Go to npmjs.com and log in
+   - Click on your profile picture → Access Tokens
+   - Click "Generate New Token" → Select "Publish"
+   
+2. Add the token to your GitHub repository:
+   - Go to your GitHub repository → Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+   - Name: `NPM_TOKEN`
+   - Value: Your npm access token
+   - Click "Add secret"
+
+Once set up, any push to the main branch will trigger the workflow to test and publish the package.
+
