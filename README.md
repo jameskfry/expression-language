@@ -3,12 +3,43 @@
 The idea is to be able to evaluate the same expressions client-side (in Javascript with this library)
 and server-side (in PHP with the Symfony/ExpressionLanguage).
 
+## Installation
+
+### NPM/Yarn
+```bash
+npm install expression-language
+# or
+yarn add expression-language
+```
+
+### Browser
+You can also use this library directly in the browser by including it via a script tag:
+
+```html
+<!-- Unminified version for development -->
+<script src="https://unpkg.com/expression-language/dist/expression-language.js"></script>
+<!-- or minified version for production -->
+<script src="https://unpkg.com/expression-language/dist/expression-language.min.js"></script>
+```
+
 ## Examples
-#### Setup
+
+### NPM/Yarn Setup
 ```javascript
 import ExpressionLanguage from "expression-language";
 let expressionLanguage = new ExpressionLanguage();
 ```
+
+### Browser Setup
+```html
+<script src="https://unpkg.com/expression-language/dist/expression-language.min.js"></script>
+<script>
+  // The library is available as a global ExpressionLanguage object
+  const expressionLanguage = new ExpressionLanguage();
+</script>
+```
+
+A complete browser example is available in the [examples/browser-usage.html](examples/browser-usage.html) file.
 #### Basic
 ```javascript
 let result = expressionLanguage.evaluate('1 + 1');

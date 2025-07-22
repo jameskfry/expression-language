@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expression Language Browser Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .example {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .result {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        pre {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Expression Language Browser Example</h1>
+    
+    <div class="example">
+        <h2>Basic Example</h2>
+        <pre>let result = expressionLanguage.evaluate('1 + 1');</pre>
+        <p>Result: <span id="basic-result" class="result"></span></p>
+    </div>
+    
+    <div class="example">
+        <h2>Multiple Clauses Example</h2>
+        <pre>let result = expressionLanguage.evaluate('a > 0 && b != a', { a: 1, b: 2 });</pre>
+        <p>Result: <span id="clauses-result" class="result"></span></p>
+    </div>
+    
+    <div class="example">
+        <h2>Object and Array Access Example</h2>
+        <pre>let expression = 'a[2] === "three" and b.myMethod(a[1]) === "bar two"';
+let values = {
+    a: ["one", "two", "three"], 
+    b: {
+        myProperty: "foo", 
+        myMethod: function(word) {
+            return "bar " + word;
+        }
+    }
+};
+let result = expressionLanguage.evaluate(expression, values);</pre>
+        <p>Result: <span id="complex-result" class="result"></span></p>
+    </div>
+
+    <!-- Include the expression-language library -->
+    <script src="https://unpkg.com/expression-language/dist/expression-language.min.js"></script>
+    
+    <script>
+        // Create an instance of ExpressionLanguage
+        const expressionLanguage = new ExpressionLanguage();
+        
+        // Basic example
+        document.getElementById('basic-result').textContent = 
+            expressionLanguage.evaluate('1 + 1');
+        
+        // Multiple clauses example
+        document.getElementById('clauses-result').textContent = 
+            expressionLanguage.evaluate('a > 0 && b != a', { a: 1, b: 2 });
+        
+        // Object and array access example
+        const expression = 'a[2] === "three" and b.myMethod(a[1]) === "bar two"';
+        const values = {
+            a: ["one", "two", "three"], 
+            b: {
+                myProperty: "foo", 
+                myMethod: function(word) {
+                    return "bar " + word;
+                }
+            }
+        };
+        document.getElementById('complex-result').textContent = 
+            expressionLanguage.evaluate(expression, values);
+    </script>
+</body>
+</html>
