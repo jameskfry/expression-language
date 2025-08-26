@@ -1,6 +1,6 @@
 {
   "name": "expression-language",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Javascript implementation of symfony/expression-language",
   "main": "lib/index.js",
   "browser": "dist/expression-language.min.js",

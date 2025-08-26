@@ -22,30 +22,64 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check version change
-        id: version-check
-        uses: ./.github/actions/version-check
-        with:
-          package-name: 'expression-language'
+      # Determine version change purely from git history to avoid npm registry race conditions
+      - name: Read current version
+        id: current-version
+        shell: bash
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+
+      - name: Read previous version
+        id: previous-version
+        shell: bash
+        run: |
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            git show HEAD^:package.json > prev_package.json || true
+            if [ -s prev_package.json ]; then
+              echo "version=$(node -p \"require('./prev_package.json').version\")" >> $GITHUB_OUTPUT
+            else
+              echo "version=0.0.0" >> $GITHUB_OUTPUT
+            fi
+          else
+            # No previous commit (e.g., initial commit)
+            echo "version=0.0.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Compare versions
+        id: version-compare
+        shell: bash
+        run: |
+          CUR=${{ steps.current-version.outputs.version }}
+          PREV=${{ steps.previous-version.outputs.version }}
+          if [ "$CUR" != "$PREV" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "current-version=$CUR" >> $GITHUB_OUTPUT
+            echo "previous-version=$PREV" >> $GITHUB_OUTPUT
+            echo "Package version changed from $PREV to $CUR"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "current-version=$CUR" >> $GITHUB_OUTPUT
+            echo "previous-version=$PREV" >> $GITHUB_OUTPUT
+            echo "Package version unchanged: $CUR"
+          fi
 
       - name: Build project
-        if: steps.version-check.outputs.changed == 'true'
+        if: steps.version-compare.outputs.changed == 'true'
         run: npm run build:all
 
       - name: Generate changelog
         id: changelog
-        if: steps.version-check.outputs.changed == 'true'
+        if: steps.version-compare.outputs.changed == 'true'
         uses: metcalfc/changelog-generator@v4.1.0
         with:
           myToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
-        if: steps.version-check.outputs.changed == 'true'
+        if: steps.version-compare.outputs.changed == 'true'
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.package-version.outputs.version }}
-          name: Release v${{ steps.package-version.outputs.version }}
+          tag_name: v${{ steps.version-compare.outputs['current-version'] }}
+          name: Release v${{ steps.version-compare.outputs['current-version'] }}
           body: |
             ## Changes in this Release
             
