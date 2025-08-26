@@ -3,6 +3,8 @@
 The idea is to be able to evaluate the same expressions client-side (in Javascript with this library)
 and server-side (in PHP with the Symfony/ExpressionLanguage).
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Installation
 
 ### NPM/Yarn
