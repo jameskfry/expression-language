@@ -7,10 +7,13 @@ inputs:
 outputs:
   current-version:
     description: 'Current version from package.json'
+    value: ${{ steps.version-compare.outputs['current-version'] }}
   published-version:
     description: 'Latest published version from npm'
+    value: ${{ steps.version-compare.outputs['published-version'] }}
   changed:
     description: 'Whether the version has changed (true/false)'
+    value: ${{ steps.version-compare.outputs.changed }}
 runs:
   using: "composite"
   steps:
