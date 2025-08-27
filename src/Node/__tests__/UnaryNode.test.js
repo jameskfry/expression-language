@@ -9,6 +9,7 @@ function getEvaluateData()
         [3, new UnaryNode('+', new ConstantNode(3))],
         [false, new UnaryNode('!', new ConstantNode(true))],
         [false, new UnaryNode('not', new ConstantNode(true))],
+        [-6, new UnaryNode('~', new ConstantNode(5))],
     ];
 }
 function getCompileData()
@@ -18,6 +19,7 @@ function getCompileData()
         ['(+3)', new UnaryNode('+', new ConstantNode(3))],
         ['(!true)', new UnaryNode('!', new ConstantNode(true))],
         ['(!true)', new UnaryNode('not', new ConstantNode(true))],
+        ['(~5)', new UnaryNode('~', new ConstantNode(5))],
     ];
 }
 function getDumpData()
@@ -27,8 +29,10 @@ function getDumpData()
         ['(+ 3)', new UnaryNode('+', new ConstantNode(3))],
         ['(! true)', new UnaryNode('!', new ConstantNode(true))],
         ['(not true)', new UnaryNode('not', new ConstantNode(true))],
+        ['(~ 5)', new UnaryNode('~', new ConstantNode(5))],
     ];
 }
+
 test('evaluate UnaryNode', () => {
     for (let evaluateParams of getEvaluateData()) {
         //console.log("Evaluating: ", evaluateParams);

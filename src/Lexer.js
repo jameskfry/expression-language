@@ -13,16 +13,31 @@ export function tokenize(expression) {
             ++cursor;
             continue;
         }
+        // Skip block comments
+        if (expression.substr(cursor, 2) === '/*') {
+            const endIdx = expression.indexOf('*/', cursor + 2);
+            if (endIdx === -1) {
+                // Unclosed comment: ignore rest of expression
+                cursor = end;
+                break;
+            } else {
+                cursor = endIdx + 2;
+                continue;
+            }
+        }
 
         let number = extractNumber(expression.substr(cursor));
         if (number !== null) {
             // numbers
             const numberLength = number.length;
-            if (number.indexOf(".") === -1) {
-                number = parseInt(number);
+            const raw = number;
+            const clean = raw.replace(/_/g, '');
+            // Decide integer vs float based on presence of decimal point or exponent
+            if (clean.indexOf(".") === -1 && clean.indexOf("e") === -1 && clean.indexOf("E") === -1) {
+                number = parseInt(clean, 10);
             }
             else {
-                number = parseFloat(number);
+                number = parseFloat(clean);
             }
             tokens.push(new Token(Token.NUMBER_TYPE, number, cursor + 1));
             cursor += numberLength;
@@ -57,25 +72,60 @@ export function tokenize(expression) {
                         //console.log(`Extracted string: ${str.captured}; Remaining: ${expression.substr(cursor)}`, cursor, expression);
                     }
                     else {
-                        let operator = extractOperator(expression.substr(cursor));
-                        if (operator) {
-                            tokens.push(new Token(Token.OPERATOR_TYPE, operator, cursor + 1));
-                            cursor += operator.length;
-                        }
-                        else {
-                            if (".,?:".indexOf(expression[cursor]) >= 0) {
-                                tokens.push(new Token(Token.PUNCTUATION_TYPE, expression[cursor], cursor + 1));
-                                ++cursor;
+                        // If the previous token is a dot accessor ('.' or '?.'), prefer extracting a name before operators
+                        const lastToken = tokens.length > 0 ? tokens[tokens.length - 1] : null;
+                        const preferName = lastToken && lastToken.type === Token.PUNCTUATION_TYPE && (lastToken.value === '.' || lastToken.value === '?.');
+
+                        if (preferName) {
+                            let name = extractName(expression.substr(cursor));
+                            if (name) {
+                                tokens.push(new Token(Token.NAME_TYPE, name, cursor + 1));
+                                cursor += name.length;
                             }
                             else {
-                                let name = extractName(expression.substr(cursor));
-                                if (name) {
-                                    tokens.push(new Token(Token.NAME_TYPE, name, cursor + 1));
-                                    cursor += name.length;
-                                    //console.log(`Extracted name: ${name}; Remaining: ${expression.substr(cursor)}`, cursor, expression)
+                                let operator = extractOperator(expression.substr(cursor));
+                                if (operator) {
+                                    tokens.push(new Token(Token.OPERATOR_TYPE, operator, cursor + 1));
+                                    cursor += operator.length;
+                                }
+                                else if (expression.substr(cursor, 2) === '?.' || expression.substr(cursor, 2) === '??') {
+                                    tokens.push(new Token(Token.PUNCTUATION_TYPE, expression.substr(cursor, 2), cursor + 1));
+                                    cursor += 2;
+                                }
+                                else if (".,?:".indexOf(expression[cursor]) >= 0) {
+                                    tokens.push(new Token(Token.PUNCTUATION_TYPE, expression[cursor], cursor + 1));
+                                    ++cursor;
                                 }
                                 else {
                                     throw new SyntaxError(`Unexpected character "${expression[cursor]}"`, cursor, expression);
+                                }
+                            }
+                        }
+                        else {
+                            let operator = extractOperator(expression.substr(cursor));
+                            if (operator) {
+                                tokens.push(new Token(Token.OPERATOR_TYPE, operator, cursor + 1));
+                                cursor += operator.length;
+                            }
+                            else {
+                                if (expression.substr(cursor, 2) === '?.' || expression.substr(cursor, 2) === '??') {
+                                    tokens.push(new Token(Token.PUNCTUATION_TYPE, expression.substr(cursor, 2), cursor + 1));
+                                    cursor += 2;
+                                }
+                                else if (".,?:".indexOf(expression[cursor]) >= 0) {
+                                    tokens.push(new Token(Token.PUNCTUATION_TYPE, expression[cursor], cursor + 1));
+                                    ++cursor;
+                                }
+                                else {
+                                    let name = extractName(expression.substr(cursor));
+                                    if (name) {
+                                        tokens.push(new Token(Token.NAME_TYPE, name, cursor + 1));
+                                        cursor += name.length;
+                                        //console.log(`Extracted name: ${name}; Remaining: ${expression.substr(cursor)}`, cursor, expression)
+                                    }
+                                    else {
+                                        throw new SyntaxError(`Unexpected character "${expression[cursor]}"`, cursor, expression);
+                                    }
                                 }
                             }
                         }
@@ -98,7 +148,15 @@ export function tokenize(expression) {
 function extractNumber(str) {
     let extracted = null;
 
-    let matches = str.match(/^[0-9]+(?:.[0-9]+)?/);
+    // Supports:
+    // - integers: 123, 1_000
+    // - decimals: 123.45, .45, 123., with optional underscores in integer and fraction parts
+    // - exponent: e or E with optional sign and digits (e.g., 1.23e+10, .7_189e10)
+    // Note: underscores are allowed between digits but not at boundaries; we simply capture and
+    // rely on parseFloat/parseInt after removing underscores implicitly by JavaScript (parseFloat ignores underscores only in modern engines, so we will strip them manually before parsing if needed elsewhere). Here we only extract the literal token string; Tokenize later uses parseInt/parseFloat which will work if underscores are removed there. Tests expect numeric values parsed correctly, so we must ensure extraction includes underscores.
+    const numberRegex = /^(?:((?:\d(?:_?\d)*)\.(?:\d(?:_?\d)*)|\.(?:\d(?:_?\d)*)|(?:\d(?:_?\d)*))(?:[eE][+-]?\d(?:_?\d)*)?)/;
+
+    let matches = str.match(numberRegex);
     if (matches && matches.length > 0) {
         extracted = matches[0];
     }
@@ -142,14 +200,14 @@ function extractString(str) {
 const operators = [
     "&&","and","||","or", // Binary
     "+", "-", "**", "*", "/", "%", // Arithmetic
-    "&", "|", "^", // Bitwise
+    "&", "|", "^", ">>", "<<", // Bitwise
     "===", "!==", "!=", "==", "<=", ">=", "<", ">", // Comparison
     "contains", "matches", "starts with", "ends with",
-    "not in", "in", "not", "!", 
+    "not in", "in", "not", "!", "xor",
     "~", // String concatenation,
-    '..' // Range function
+    '..', // Range function
 ];
-const wordBasedOperators = ["and", "or", "matches", "contains", "starts with", "ends with", "not in", "in", "not"];
+const wordBasedOperators = ["and", "or", "matches", "contains", "starts with", "ends with", "not in", "in", "not", "xor"];
 /**
  *
  * @param str

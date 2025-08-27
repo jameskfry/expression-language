@@ -10,10 +10,14 @@ import NameNode from "./Node/NameNode";
 import ArrayNode from "./Node/ArrayNode";
 import ArgumentsNode from "./Node/ArgumentsNode";
 import GetAttrNode from "./Node/GetAttrNode";
+import NullCoalesceNode from "./Node/NullCoalesceNode";
+import NullCoalescedNameNode from "./Node/NullCoalescedNameNode";
 
 
 export const OPERATOR_LEFT = 1;
 export const OPERATOR_RIGHT = 2;
+export const IGNORE_UNKNOWN_VARIABLES = 1;
+export const IGNORE_UNKNOWN_FUNCTIONS = 2;
 
 export default class Parser {
     functions = {};
@@ -21,12 +25,14 @@ export default class Parser {
         'not': {'precedence': 50},
         '!': {'precedence': 50},
         '-': {'precedence': 500},
-        '+': {'precedence': 500}
+        '+': {'precedence': 500},
+        '~': {'precedence': 500},
     };
 
     binaryOperators = {
         'or': {'precedence': 10, 'associativity': OPERATOR_LEFT},
         '||': {'precedence': 10, 'associativity': OPERATOR_LEFT},
+        'xor': {precedence: 12, 'associativity': OPERATOR_LEFT},
         'and': {'precedence': 15, 'associativity': OPERATOR_LEFT},
         '&&': {'precedence': 15, 'associativity': OPERATOR_LEFT},
         '|': {'precedence': 16, 'associativity': OPERATOR_LEFT},
@@ -47,6 +53,8 @@ export default class Parser {
         'starts with': {'precedence': 20, 'associativity': OPERATOR_LEFT},
         'ends with': {'precedence': 20, 'associativity': OPERATOR_LEFT},
         '..': {'precedence': 25, 'associativity': OPERATOR_LEFT},
+        '<<': {'precedence': 25, 'associativity': OPERATOR_LEFT},
+        '>>': {'precedence': 25, 'associativity': OPERATOR_LEFT},
         '+': {'precedence': 30, 'associativity': OPERATOR_LEFT},
         '-': {'precedence': 30, 'associativity': OPERATOR_LEFT},
         '~': {'precedence': 40, 'associativity': OPERATOR_LEFT},
@@ -63,30 +71,43 @@ export default class Parser {
         this.objectMatches = {};
         this.cachedNames = null;
         this.nestedExecutions = 0;
+        this.flags = 0;
     }
 
-    parse = (tokenStream, names=[]) => {
+    parse = (tokenStream, names=[], flags=0) => {
         this.tokenStream = tokenStream;
         this.names = names;
         this.objectMatches = {};
         this.cachedNames = null;
         this.nestedExecutions = 0;
+        this.flags = flags;
         //console.log("tokens: ", tokenStream.toString());
 
         let node = this.parseExpression();
 
         if (!this.tokenStream.isEOF()) {
-            throw new SyntaxError(`Unexpected token "${this.tokenStream.current.type}" of value "${this.tokenStream.current.value}".`, this.tokenStream.current.cursor, this.tokenStream.expression);
+            throw new SyntaxError(`Unexpected token "${this.tokenStream.current.type}" of value "${this.tokenStream.current.value}"`, this.tokenStream.current.cursor, this.tokenStream.expression);
         }
 
         return node;
     };
 
+    lint = (tokenStream, names=[], flags=0) => {
+        if (null === names) {
+            console.log("Deprecated: passing \"null\" as the second argument of lint is deprecated, pass IGNORE_UNKNOWN_VARIABLES instead as the third argument");
+
+            flags |= IGNORE_UNKNOWN_VARIABLES;
+            names = [];
+        }
+
+        this.parse(tokenStream, names, flags);
+    }
+
     parseExpression = (precedence = 0) => {
         let expr = this.getPrimary();
         let token = this.tokenStream.current;
         this.nestedExecutions++;
-        if (this.nestedExecutions > 100) {
+        if (this.nestedExecutions > 1000) {
             throw new Error("Way to many executions on '" + token.toString() + "' of '" + this.tokenStream.toString() + "'");
         }
 
@@ -138,6 +159,12 @@ export default class Parser {
     };
 
     parseConditionalExpression(expr) {
+        while (this.tokenStream.current.test(Token.PUNCTUATION_TYPE, "??")) {
+            this.tokenStream.next();
+            let expr2 = this.parseExpression();
+            expr = new NullCoalesceNode(expr, expr2);
+        }
+
         while(this.tokenStream.current.test(Token.PUNCTUATION_TYPE, "?")) {
             this.tokenStream.next();
             let expr2, expr3;
@@ -185,21 +212,31 @@ export default class Parser {
 
                     default:
                         if ("(" === this.tokenStream.current.value) {
-                            if (this.functions[token.value] === undefined) {
+                            if (undefined === this.functions[token.value] && !(this.flags & IGNORE_UNKNOWN_FUNCTIONS)) {
                                 throw new SyntaxError(`The function "${token.value}" does not exist`, token.cursor, this.tokenStream.expression, token.values, Object.keys(this.functions));
                             }
 
                             node = new FunctionNode(token.value, this.parseArguments());
                         }
                         else {
-                            if (!this.hasVariable(token.value)) {
-                                throw new SyntaxError(`Variable "${token.value}" is not valid`, token.cursor, this.tokenStream.expression, token.value, this.getNames());
-                            }
+                            let name = null;
+                            if (!(this.flags & IGNORE_UNKNOWN_VARIABLES)) {
+                                if (!this.hasVariable(token.value)) {
+                                    if (this.tokenStream.current.test(Token.PUNCTUATION_TYPE, "??")) {
+                                        return new NullCoalescedNameNode(token.value);
+                                    }
 
-                            let name = token.value;
-                            //console.log("Checking for object matches: ", name, this.objectMatches, this.getNames());
-                            if (this.objectMatches[name] !== undefined) {
-                                name = this.getNames()[this.objectMatches[name]];
+                                    throw new SyntaxError(`Variable "${token.value}" is not valid`, token.cursor, this.tokenStream.expression, token.value, this.getNames());
+                                }
+
+                                name = token.value;
+                                //console.log("Checking for object matches: ", name, this.objectMatches, this.getNames());
+                                if (this.objectMatches[name] !== undefined) {
+                                    name = this.getNames()[this.objectMatches[name]];
+                                }
+                            }
+                            else {
+                                name = token.value;
                             }
 
                             node = new NameNode(name);
@@ -288,8 +325,7 @@ export default class Parser {
 
         while(!this.tokenStream.current.test(Token.PUNCTUATION_TYPE, '}')) {
             if (!first) {
-                this.tokenStream.expect(Token.PUNCTUATION_TYPE, ",", "An array element must be followed by a comma");
-
+                this.tokenStream.expect(Token.PUNCTUATION_TYPE, ",", "A hash value must be followed by a comma");
                 // trailing ,?
                 if (this.tokenStream.current.test(Token.PUNCTUATION_TYPE, "}")) {
                     break;
@@ -334,7 +370,8 @@ export default class Parser {
     parsePostfixExpression = (node) => {
         let token = this.tokenStream.current;
         while (Token.PUNCTUATION_TYPE === token.type) {
-            if ('.' === token.value) {
+            if ('.' === token.value || '?.' === token.value) {
+                const isNullSafe = "?." === token.value;
                 this.tokenStream.next();
                 token = this.tokenStream.current;
                 this.tokenStream.next();
@@ -356,7 +393,7 @@ export default class Parser {
                     throw new SyntaxError('Expected name', token.cursor, this.tokenStream.expression);
                 }
 
-                let arg = new ConstantNode(token.value, true),
+                let arg = new ConstantNode(token.value, true, isNullSafe),
                     _arguments = new ArgumentsNode(),
                     type = null;
 

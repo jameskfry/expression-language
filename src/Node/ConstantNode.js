@@ -1,9 +1,10 @@
 import Node from "./Node";
 
 export default class ConstantNode extends Node {
-    constructor(value, isIdentifier = false) {
+    constructor(value, isIdentifier = false, isNullSafe = false) {
         super({}, {value: value});
         this.isIdentifier = isIdentifier;
+        this.isNullSafe = isNullSafe;
         this.name = 'ConstantNode';
     }
 

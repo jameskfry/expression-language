@@ -3,6 +3,7 @@ import ArrayNode from "../ArrayNode";
 import ConstantNode from "../ConstantNode";
 import NameNode from "../NameNode";
 import Compiler from "../../Compiler";
+import ArgumentsNode from "../ArgumentsNode";
 
 function getArrayNode() {
     let arr = new ArrayNode();
@@ -70,6 +71,7 @@ function getDumpData() {
         ['foo.fooFn({"0": "b", "b": "a"})', new GetAttrNode(new NameNode('foo'), new NameNode('fooFn'), getArrayNode(), GetAttrNode.METHOD_CALL), {foo: new Obj()}
         ],
         ['foo[index]', new GetAttrNode(new NameNode('foo'), new NameNode('index'), getArrayNode(), GetAttrNode.ARRAY_CALL)],
+        ['foo?.fooFn()', new GetAttrNode(new NameNode('foo'), new ConstantNode('fooFn', true, true), new ArgumentsNode(), GetAttrNode.METHOD_CALL)]
     ];
 }
 

@@ -36,6 +36,7 @@ function getDumpData() {
         ['foo', new ConstantNode('foo', true)],
         ['{"one": 1}', new ConstantNode({one: 1})],
         ['{\"one\": 1, "c": true, \"b\": "a"}', new ConstantNode({one: 1, c: true, b: 'a'})],
+        ['{"a\\"b": "c", "a\\\\b": "d"}', new ConstantNode({'a"b': 'c', 'a\\b': "d"})],
         ['["c","d"]', new ConstantNode(["c", "d"])],
         ['{"a": ["b"]}', new ConstantNode({a: ["b"]})]
     ]

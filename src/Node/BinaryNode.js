@@ -8,7 +8,10 @@ export default class BinaryNode extends Node {
     static operators = {
         '~': '.',
         'and': '&&',
-        'or': '||'
+        'or': '||',
+        'xor': 'xor',
+        '<<': '<<',
+        '>>': '>>'
     };
 
     static functions = {
@@ -115,6 +118,16 @@ export default class BinaryNode extends Node {
                     right = this.nodes.right.evaluate(functions, values);
                 }
                 return left && right;
+            case 'xor':
+                right = this.nodes.right.evaluate(functions, values);
+                return ((right && !left) || (left && !right));
+            case '<<':
+                right = this.nodes.right.evaluate(functions, values);
+                return left << right;
+            case '>>':
+                right = this.nodes.right.evaluate(functions, values);
+                return left >> right;
+            default:
         }
 
         right = this.nodes.right.evaluate(functions, values);
@@ -159,6 +172,9 @@ export default class BinaryNode extends Node {
             case '%':
                 return left % right;
             case 'matches':
+                if (left === null || left === undefined) {
+                    return false;
+                }
                 let res = right.match(BinaryNode.regex_expression);
                 let regexp = new RegExp(res[1], res[2]);
                 return regexp.test(left);

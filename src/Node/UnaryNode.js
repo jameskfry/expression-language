@@ -5,7 +5,8 @@ export default class UnaryNode extends Node {
         '!': '!',
         'not': '!',
         '+': '+',
-        '-': '-'
+        '-': '-',
+        '~': '~'
     };
 
     constructor(operator, node) {
@@ -28,6 +29,8 @@ export default class UnaryNode extends Node {
                 return !value;
             case '-':
                 return -value;
+            case '~':
+                return ~value;
         }
 
         return value;

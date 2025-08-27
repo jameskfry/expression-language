@@ -5,7 +5,7 @@ import Compiler from "../../Compiler";
 
 function getEvaluateData() {
     return [
-        ['bar', new FunctionNode('foo', new Node([new ConstantNode('bar')])), [], {foo: getCallables()}]
+        ['bar', new FunctionNode('foo', new Node([new ConstantNode('bar')])), {}, {foo: getCallables()}]
     ];
 }
 

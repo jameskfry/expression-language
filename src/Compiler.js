@@ -73,6 +73,7 @@ export default class Compiler {
     /**
      * Returns a javascript representation of a given value.
      * @param {int|float|null|boolean|Object|Array|string} value The value to convert
+     * @param {boolean} isIdentifier
      * @returns {Compiler}
      */
     repr = (value, isIdentifier = false) => {

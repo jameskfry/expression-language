@@ -54,6 +54,30 @@ test('strict equality', () => {
     expect(result).toBe("(123 === a)");
 });
 
+// New tests adapted from Symfony ExpressionLanguageTest (PHP)
+
+test('cached parse returns same instance', () => {
+    const el = new ExpressionLanguage();
+    const first = el.parse('1 + 1', []);
+    const second = el.parse('1 + 1', []);
+    expect(second).toBe(first);
+});
+
+test('parse returns same object when already parsed', () => {
+    const el = new ExpressionLanguage();
+    const parsed = el.parse('1 + 1', []);
+    const again = el.parse(parsed, []);
+    expect(again).toBe(parsed);
+});
+
+test('caching with different names order yields same parsed object', () => {
+    const el = new ExpressionLanguage();
+    const expr = 'a + b';
+    const first = el.parse(expr, ['a', {B: 'b'}]);
+    const second = el.parse(expr, [{B: 'b'}, 'a']);
+    expect(second).toBe(first);
+});
+
 test('register after parse', () => {
     let callbacks = getRegisterCallbacks();
 
@@ -111,10 +135,64 @@ test('bad callable', () => {
         expressionLanguage.evaluate("foo.myfunction()", {foo: {}});
         console.log("Shouldn't get to this point.");
         expect(true).toBe(false);
-    }
-    catch(err) {
+    } catch (err) {
         //console.log(err);
         expect(err.toString()).toBe('Error: Method "myfunction" is undefined on object.');
+    }
+});
+
+test('operator collisions evaluate and compile', () => {
+    const el = new ExpressionLanguage();
+    const expr = 'foo.not in [bar]';
+    const compiled = el.compile(expr, ['foo', 'bar']);
+    // compiled code should be evaluable and return true
+    expect(compiled).toBe("includes(foo.not, [bar])");
+
+    const resultEvaluated = el.evaluate(expr, {foo: {not: 'test'}, bar: 'test'});
+    expect(resultEvaluated).toBe(true);
+});
+
+test('parse throws on incomplete expression (node.)', () => {
+    const el = new ExpressionLanguage();
+    expect(() => el.parse('node.', ['node'])).toThrow();
+});
+
+test('comments ignored in evaluate and compile', () => {
+    const el = new ExpressionLanguage();
+    expect(el.evaluate('1 /* foo */ + 2')).toBe(3);
+    expect(el.compile('1 /* foo */ + 2')).toBe('(1 + 2)');
+});
+
+test('providers evaluate and compile via constructor (array and generator)', () => {
+    const makeProvider = () => ({
+        getFunctions: () => ([
+            new ExpressionFunction('identity', (x) => `${x}`, (values, x) => x),
+            new ExpressionFunction('strtoupper', (x) => `${x}.toUpperCase()`, (values, x) => (x ?? '').toString().toUpperCase()),
+            new ExpressionFunction('strtolower', (x) => `${x}.toLowerCase()`, (values, x) => (x ?? '').toString().toLowerCase()),
+            new ExpressionFunction('fn_namespaced', () => 'true', () => true),
+        ])
+    });
+
+    const provider = makeProvider();
+
+    const cases = [
+        [ [provider] ],
+        [ (function* () { yield provider; })() ],
+    ];
+
+    for (const [providers] of cases) {
+        const el = new ExpressionLanguage(null, providers);
+        expect(el.evaluate('identity("foo")')).toBe('foo');
+        expect(el.compile('identity("foo")')).toBe('"foo"');
+
+        expect(el.evaluate('strtoupper("foo")')).toBe('FOO');
+        expect(el.compile('strtoupper("foo")')).toBe('"foo".toUpperCase()');
+
+        expect(el.evaluate('strtolower("FOO")')).toBe('foo');
+        expect(el.compile('strtolower("FOO")')).toBe('"FOO".toLowerCase()');
+
+        expect(el.evaluate('fn_namespaced()')).toBe(true);
+        expect(el.compile('fn_namespaced()')).toBe('true');
     }
 });
 
@@ -151,6 +229,95 @@ function getRegisterCallbacks() {
     ]
 }
 
+test('null safe compile', () => {
+    let el = new ExpressionLanguage();
+    for (let oneNullSafe of getNullSafe()) {
+        let foo = oneNullSafe[1];
+        let result = el.compile(oneNullSafe[0], ['foo']);
+        expect(eval(result)).toBeFalsy();
+    }
+});
+
+test('null safe evaluate', () => {
+    let el = new ExpressionLanguage();
+    for (let oneNullSafe of getNullSafe()) {
+        let result = el.evaluate(oneNullSafe[0], {foo: oneNullSafe[1]});
+        expect(result).toBeNull();
+    }
+})
+
+test('null coalescing evaluate returns default', () => {
+    const el = new ExpressionLanguage();
+    for (const [expr, foo] of getNullCoalescing()) {
+        console.log("evaluationg expression ", {
+            expression: expr,
+            values: {
+                foo
+            }
+        })
+        expect(el.evaluate(expr, {foo})).toBe('default');
+    }
+});
+
+test('null coalescing compile returns default', () => {
+    const el = new ExpressionLanguage();
+    for (const [expr, foo] of getNullCoalescing()) {
+        const code = el.compile(expr, [{foo: 'foo'}]);
+    }
+});
+
+function getNullSafe() {
+    let foo = {
+        bar: () => {
+            return null;
+        }
+    };
+
+    return [
+        ['foo?.bar', null],
+        ['foo?.bar()', null],
+        ['foo.bar?.baz', {bar: null}],
+        ['foo.bar?.baz()', {bar: null}],
+        ['foo["bar"]?.baz', {bar: null}],
+        ['foo["bar"]?.baz()', {bar: null}],
+        ['foo.bar()?.baz', foo],
+        ['foo.bar()?.baz()', foo],
+
+        ['foo?.bar.baz', null],
+        ['foo?.bar["baz"]', null],
+        ['foo?.bar["baz"]["qux"]', null],
+        ['foo?.bar["baz"]["qux"].quux', null],
+        ['foo?.bar["baz"]["qux"].quux()', null],
+        ['foo?.bar().baz', null],
+        ['foo?.bar()["baz"]', null],
+        ['foo?.bar()["baz"]["qux"]', null],
+        ['foo?.bar()["baz"]["qux"].quux', null],
+        ['foo?.bar()["baz"]["qux"].quux()', null]
+    ]
+}
+
+function getNullCoalescing() {
+    const foo = {
+        bar: () => null
+    };
+
+    return [
+        ['bar ?? "default"', null],
+        ['foo.bar ?? "default"', null],
+        ['foo.bar.baz ?? "default"', ({bar: null})],
+        ['foo.bar ?? foo.baz ?? "default"', null],
+        ['foo[0] ?? "default"', []],
+        ['foo["bar"] ?? "default"', ({bar: null})],
+        ['foo["baz"] ?? "default"', ({bar: null})],
+        ['foo["bar"]["baz"] ?? "default"', ({bar: null})],
+        ['foo["bar"].baz ?? "default"', ({bar: null})],
+        ['foo.bar().baz ?? "default"', foo],
+        ['foo.bar.baz.bam ?? "default"', ({bar: null})],
+        ['foo?.bar?.baz?.qux ?? "default"', ({bar: null})],
+        ['foo[123][456][789] ?? "default"', ({123: []})],
+    ];
+}
+
 test('evaluate', () => {
     let evaluateData = getEvaluateData();
 
@@ -169,8 +336,7 @@ test('evaluate', () => {
 
         if (expectedOutcome !== null && typeof expectedOutcome === "object") {
             expect(result).toMatchObject(expectedOutcome);
-        }
-        else {
+        } else {
             expect(result).toBe(expectedOutcome);
         }
     }
@@ -341,7 +507,7 @@ function getEvaluateData() {
                     second: 4
                 },
                 bar: {
-                    first: [1,2,3,4,5],
+                    first: [1, 2, 3, 4, 5],
                     getSecond: () => {
                         return 8;
                     }

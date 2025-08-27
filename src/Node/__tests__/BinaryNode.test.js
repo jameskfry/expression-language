@@ -12,12 +12,15 @@ function getEvaluateData()
     return [
         [true, new BinaryNode('or', new ConstantNode(true), new ConstantNode(false))],
         [true, new BinaryNode('||', new ConstantNode(true), new ConstantNode(false))],
+        [false, new BinaryNode('xor', new ConstantNode(true), new ConstantNode(true))],
         [false, new BinaryNode('and', new ConstantNode(true), new ConstantNode(false))],
         [false, new BinaryNode('&&', new ConstantNode(true), new ConstantNode(false))],
 
         [0, new BinaryNode('&', new ConstantNode(2), new ConstantNode(4))],
         [6, new BinaryNode('|', new ConstantNode(2), new ConstantNode(4))],
         [6, new BinaryNode('^', new ConstantNode(2), new ConstantNode(4))],
+        [32, new BinaryNode('<<', new ConstantNode(2), new ConstantNode(4))],
+        [2, new BinaryNode('>>', new ConstantNode(32), new ConstantNode(4))],
 
         [true, new BinaryNode('<', new ConstantNode(1), new ConstantNode(2))],
         [true, new BinaryNode('<=', new ConstantNode(1), new ConstantNode(2))],
@@ -48,12 +51,18 @@ function getEvaluateData()
 
         [[1, 2, 3], new BinaryNode('..', new ConstantNode(1), new ConstantNode(3))],
 
+        [true, new BinaryNode('starts with', new ConstantNode('abc'), new ConstantNode('a'))],
+        [false, new BinaryNode('starts with', new ConstantNode('abc'), new ConstantNode('b'))],
+        [true, new BinaryNode('ends with', new ConstantNode('abc'), new ConstantNode('c'))],
+        [false, new BinaryNode('ends with', new ConstantNode('abc'), new ConstantNode('b'))],
+
         [true, new BinaryNode('matches', new ConstantNode('abc'), new ConstantNode('/^[a-z]+$/'))],
+        [false, new BinaryNode('matches', new ConstantNode(''), new ConstantNode('/^[a-z]+$/'))],
+        [false, new BinaryNode('matches', new ConstantNode(null), new ConstantNode('/^[a-z]+$/'))],
 
         [true, new BinaryNode('contains', new ConstantNode('abcd'), new ConstantNode('BC'))],
 
         [true, new BinaryNode('starts with', new ConstantNode('abcd'), new ConstantNode('AB'))],
-
         [true, new BinaryNode('ends with', new ConstantNode('abcd'), new ConstantNode('CD'))],
     ];
 }
@@ -67,12 +76,15 @@ function getCompileData()
     return [
         ['(true || false)', new BinaryNode('or', new ConstantNode(true), new ConstantNode(false))],
         ['(true || false)', new BinaryNode('||', new ConstantNode(true), new ConstantNode(false))],
+        ['(true xor true)', new BinaryNode('xor', new ConstantNode(true), new ConstantNode(true))],
         ['(true && false)', new BinaryNode('and', new ConstantNode(true), new ConstantNode(false))],
         ['(true && false)', new BinaryNode('&&', new ConstantNode(true), new ConstantNode(false))],
 
         ['(2 & 4)', new BinaryNode('&', new ConstantNode(2), new ConstantNode(4))],
         ['(2 | 4)', new BinaryNode('|', new ConstantNode(2), new ConstantNode(4))],
         ['(2 ^ 4)', new BinaryNode('^', new ConstantNode(2), new ConstantNode(4))],
+        ['(2 << 4)', new BinaryNode('<<', new ConstantNode(2), new ConstantNode(4))],
+        ['(32 >> 4)', new BinaryNode('>>', new ConstantNode(32), new ConstantNode(4))],
 
         ['(1 < 2)', new BinaryNode('<', new ConstantNode(1), new ConstantNode(2))],
         ['(1 <= 2)', new BinaryNode('<=', new ConstantNode(1), new ConstantNode(2))],
@@ -120,12 +132,15 @@ function getDumpData()
     return [
         ['(true or false)', new BinaryNode('or', new ConstantNode(true), new ConstantNode(false))],
         ['(true || false)', new BinaryNode('||', new ConstantNode(true), new ConstantNode(false))],
+        ['(true xor true)', new BinaryNode('xor', new ConstantNode(true), new ConstantNode(true))],
         ['(true and false)', new BinaryNode('and', new ConstantNode(true), new ConstantNode(false))],
         ['(true && false)', new BinaryNode('&&', new ConstantNode(true), new ConstantNode(false))],
 
         ['(2 & 4)', new BinaryNode('&', new ConstantNode(2), new ConstantNode(4))],
         ['(2 | 4)', new BinaryNode('|', new ConstantNode(2), new ConstantNode(4))],
         ['(2 ^ 4)', new BinaryNode('^', new ConstantNode(2), new ConstantNode(4))],
+        ['(2 << 4)', new BinaryNode('<<', new ConstantNode(2), new ConstantNode(4))],
+        ['(32 >> 4)', new BinaryNode('>>', new ConstantNode(32), new ConstantNode(4))],
 
         ['(1 < 2)', new BinaryNode('<', new ConstantNode(1), new ConstantNode(2))],
         ['(1 <= 2)', new BinaryNode('<=', new ConstantNode(1), new ConstantNode(2))],
@@ -165,6 +180,7 @@ function getDumpData()
 }
 
 test('evaluate BinaryNode', () => {
+    let textIndex = 0;
     for (let evaluateParams of getEvaluateData()) {
         //console.log("Evaluating: ", evaluateParams);
         let evaluated = evaluateParams[1].evaluate({}, {});
@@ -175,6 +191,8 @@ test('evaluate BinaryNode', () => {
         else {
             expect(evaluated).toBe(evaluateParams[0]);
         }
+
+        textIndex++;
     }
 });
 
