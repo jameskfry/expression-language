@@ -249,12 +249,6 @@ test('null safe evaluate', () => {
 test('null coalescing evaluate returns default', () => {
     const el = new ExpressionLanguage();
     for (const [expr, foo] of getNullCoalescing()) {
-        console.log("evaluationg expression ", {
-            expression: expr,
-            values: {
-                foo
-            }
-        })
         expect(el.evaluate(expr, {foo})).toBe('default');
     }
 });

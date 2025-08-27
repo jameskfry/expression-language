@@ -1,12 +1,12 @@
 {
   "name": "expression-language",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Javascript implementation of symfony/expression-language",
   "main": "lib/index.js",
   "browser": "dist/expression-language.min.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jameskfry/expression-language.git"
+    "url": "git+https://github.com/jameskfry/expression-language.git"
   },
   "scripts": {
     "build": "rm -rf lib && babel src -d lib",
