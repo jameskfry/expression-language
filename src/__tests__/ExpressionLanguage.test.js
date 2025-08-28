@@ -182,6 +182,41 @@ test('built-in constant returns undefined for unknown or invalid names', () => {
     expect(el.evaluate('constant("")')).toBeUndefined();
 });
 
+// enum() tests
+
+test('built-in enum evaluates and compiles using PHP-like FQN string', () => {
+    const el = new ExpressionLanguage();
+    // prepare a global-like namespace with an enum-like object
+    const root = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : global);
+    root.App = root.App || {};
+    root.App.SomeNamespace = root.App.SomeNamespace || {};
+    root.App.SomeNamespace.Foo = { Bar: { kind: 'Foo.Bar' } };
+
+    // PHP-like input with backslashes and ::
+    const expr = 'enum("App\\\\SomeNamespace\\\\Foo::Bar")';
+    const value = el.evaluate(expr);
+    expect(value).toMatchObject({ kind: 'Foo.Bar' });
+
+    const code = el.compile(expr, []);
+    // ensure global is visible to eval
+    expect(eval(code)).toMatchObject({ kind: 'Foo.Bar' });
+});
+
+test('built-in enum supports dotted path as well', () => {
+    const el = new ExpressionLanguage();
+    const root = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : global);
+    root.App = root.App || {};
+    root.App.Other = { Enum: { CaseA: { ok: true } } };
+    expect(el.evaluate('enum("App.Other.Enum.CaseA")')).toMatchObject({ ok: true });
+});
+
+test('built-in enum returns undefined on invalid input or missing members', () => {
+    const el = new ExpressionLanguage();
+    expect(el.evaluate('enum(123)')).toBeUndefined();
+    expect(el.evaluate('enum("")')).toBeUndefined();
+    expect(el.evaluate('enum("Not.Exist::Nope")')).toBeUndefined();
+});
+
 test('operator collisions evaluate and compile', () => {
     const el = new ExpressionLanguage();
     const expr = 'foo.not in [bar]';

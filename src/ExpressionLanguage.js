@@ -4,7 +4,7 @@ import Compiler from "./Compiler";
 import ParsedExpression from "./ParsedExpression";
 import ArrayAdapter from "./Cache/ArrayAdapter";
 import LogicException from "./LogicException";
-import {ExpressionFunction} from "./index";
+import ExpressionFunction from "./ExpressionFunction";
 
 export default class ExpressionLanguage {
     constructor(cache = null, providers = []) {
@@ -161,6 +161,35 @@ export default class ExpressionLanguage {
                 }
 
                 return resolved;
+            }
+        ));
+
+        // PHP-like enum(FQN::CASE): resolves a namespaced path from global object
+        this.addFunction(new ExpressionFunction('enum',
+            function compiler(enumName) {
+                // normalize separators ('.', '\\', '::') into path segments without using regex
+                return `(function(__n){var __g=(typeof globalThis!=='undefined'?globalThis:(typeof window!=='undefined'?window:(typeof global!=='undefined'?global:{})));`+
+                    `if(typeof __n!=='string'||!__n)return undefined;`+
+                    `var s=String(__n);var keys=[],buf='';`+
+                    `for(var i=0;i<s.length;i++){var c=s.charCodeAt(i);`+
+                    `if(c===46||c===92){if(buf){keys.push(buf);buf='';}continue;}`+
+                    `if(c===58){if(i+1<s.length&&s.charCodeAt(i+1)===58){if(buf){keys.push(buf);buf='';}i++;continue;}}`+
+                    `buf+=s[i];}`+
+                    `if(buf)keys.push(buf);`+
+                    `return keys.reduce(function(o,k){return o==null?undefined:o[k];}, __g)})(${enumName})`;
+            },
+            function evaluator(values, enumName) {
+                if (typeof enumName !== 'string' || !enumName) {
+                    return undefined;
+                }
+                const getGlobal = () => (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {}));
+                const normalize = (s) => {
+                    return String(s).replace(/\\\\/g, '.').replace(/::/g, '.');
+                };
+                const resolvePath = (root, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), root);
+                const normalized = normalize(enumName);
+                if (!normalized) return undefined;
+                return resolvePath(getGlobal(), normalized);
             }
         ));
     }
