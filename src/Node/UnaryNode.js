@@ -36,7 +36,7 @@ export default class UnaryNode extends Node {
         return value;
     };
 
-    toArray() {
+    toArray = () => {
         return ['(', this.attributes.operator + " ", this.nodes.node, ')'];
     }
 }

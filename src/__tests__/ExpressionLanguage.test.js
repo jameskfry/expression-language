@@ -141,6 +141,47 @@ test('bad callable', () => {
     }
 });
 
+test('built-in min function', () => {
+    const el = new ExpressionLanguage();
+    const expr = 'min(1,2,3)';
+    const compiled = el.compile(expr, []);
+    expect(compiled).toBe('Math.min(1, 2, 3)');
+
+    const result = el.evaluate(expr, {});
+    expect(result).toBe(1);
+});
+
+test('built-in max function', () => {
+    const el = new ExpressionLanguage();
+    const expr = 'max(1,2,3)';
+    const compiled = el.compile(expr, []);
+    expect(compiled).toBe('Math.max(1, 2, 3)');
+
+    const result = el.evaluate(expr, {});
+    expect(result).toBe(3);
+});
+
+test('built-in constant function evaluates globals and dotted paths', () => {
+    const el = new ExpressionLanguage();
+    expect(el.evaluate('constant("Math.PI")')).toBe(Math.PI);
+    // also via compile+eval
+    const code = el.compile('constant("Math.E")', []);
+    expect(eval(code)).toBe(Math.E);
+});
+
+test('built-in constant function falls back to values map', () => {
+    const el = new ExpressionLanguage();
+    const values = {FOO: 42};
+    expect(el.evaluate('constant("FOO")', values)).toBe(42);
+});
+
+test('built-in constant returns undefined for unknown or invalid names', () => {
+    const el = new ExpressionLanguage();
+    expect(el.evaluate('constant("This.Does.Not.Exist")')).toBeUndefined();
+    expect(el.evaluate('constant(123)')).toBeUndefined();
+    expect(el.evaluate('constant("")')).toBeUndefined();
+});
+
 test('operator collisions evaluate and compile', () => {
     const el = new ExpressionLanguage();
     const expr = 'foo.not in [bar]';

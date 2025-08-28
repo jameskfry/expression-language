@@ -3,13 +3,13 @@ import Node from "./Node";
 export default class FunctionNode extends Node {
     constructor(name, _arguments) {
         //console.log("Creating function node: ", name, _arguments);
-        super({arguments: _arguments}, {name: name});
+        super({fnArguments: _arguments}, {name: name});
         this.name = 'FunctionNode';
     }
 
     compile = (compiler) => {
         let _arguments = [];
-        for (let node of Object.values(this.nodes.arguments.nodes)) {
+        for (let node of Object.values(this.nodes.fnArguments.nodes)) {
             _arguments.push(compiler.subcompile(node));
         }
 
@@ -20,7 +20,7 @@ export default class FunctionNode extends Node {
 
     evaluate = (functions, values) => {
         let _arguments = [values];
-        for (let node of Object.values(this.nodes.arguments.nodes)) {
+        for (let node of Object.values(this.nodes.fnArguments.nodes)) {
             //console.log("Testing: ", node, functions, values);
             _arguments.push(node.evaluate(functions, values));
         }
@@ -28,11 +28,11 @@ export default class FunctionNode extends Node {
         return functions[this.attributes.name]['evaluator'].apply(null, _arguments);
     };
 
-    toArray() {
+    toArray = () => {
         let array = [];
         array.push(this.attributes.name);
 
-        for (let node of Object.values(this.nodes.arguments.nodes)) {
+        for (let node of Object.values(this.nodes.fnArguments.nodes)) {
             array.push(', ');
             array.push(node);
         }

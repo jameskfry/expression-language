@@ -53,7 +53,7 @@ export default class Node {
         return results;
     };
 
-    toArray() {
+    toArray = () => {
         throw new Error(`Dumping a "${this.name}" instance is not supported yet.`);
     }
 

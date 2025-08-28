@@ -187,7 +187,7 @@ export default class BinaryNode extends Node {
         }
     };
 
-    toArray() {
+    toArray = () => {
         return ["(", this.nodes.left, ' ' + this.attributes.operator + ' ', this.nodes.right, ")"];
     }
 

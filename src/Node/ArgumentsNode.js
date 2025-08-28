@@ -10,7 +10,7 @@ export default class ArgumentsNode extends ArrayNode {
         this.compileArguments(compiler, false);
     };
 
-    toArray() {
+    toArray = () => {
         let array = [];
         for (let pair of this.getKeyValuePairs()) {
             array.push(pair.value);

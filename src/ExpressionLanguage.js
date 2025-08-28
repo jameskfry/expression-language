@@ -4,6 +4,7 @@ import Compiler from "./Compiler";
 import ParsedExpression from "./ParsedExpression";
 import ArrayAdapter from "./Cache/ArrayAdapter";
 import LogicException from "./LogicException";
+import {ExpressionFunction} from "./index";
 
 export default class ExpressionLanguage {
     constructor(cache = null, providers = []) {
@@ -12,6 +13,9 @@ export default class ExpressionLanguage {
         this.compiler = null;
 
         this.cache = cache || new ArrayAdapter();
+
+        this._registerBuiltinFunctions();
+
         for (let provider of providers) {
             this.registerProvider(provider);
         }
@@ -92,7 +96,7 @@ export default class ExpressionLanguage {
     };
 
     fixedEncodeURIComponent = (str) => {
-        return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
+        return encodeURIComponent(str).replace(/[!'()*]/g, function (c) {
             return '%' + c.charCodeAt(0).toString(16);
         });
     };
@@ -126,8 +130,39 @@ export default class ExpressionLanguage {
         }
     };
 
-    _registerFunctions() {
-        // TODO figure out a way to replicate "constant" function from PHP
+    _registerBuiltinFunctions() {
+        const minFn = ExpressionFunction.fromJavascript('Math.min', 'min');
+        const maxFn = ExpressionFunction.fromJavascript('Math.max', 'max');
+        this.addFunction(minFn);
+        this.addFunction(maxFn);
+
+        // PHP-like constant(name): resolves a global/dotted path from globalThis (or window/global)
+        this.addFunction(new ExpressionFunction('constant',
+            function compiler(constantName) {
+                // Compile to an IIFE that resolves from global object, supporting dotted paths (e.g., "Math.PI")
+                return `(function(__n){var __g=(typeof globalThis!=='undefined'?globalThis:(typeof window!=='undefined'?window:(typeof global!=='undefined'?global:{})));return __n.split('.')`+
+                    `.reduce(function(o,k){return o==null?undefined:o[k];}, __g)})(${constantName})`;
+            },
+            function evaluator(values, constantName) {
+                if (typeof constantName !== 'string' || !constantName) {
+                    return undefined;
+                }
+                const getGlobal = () => (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {}));
+                const resolvePath = (root, path) => {
+                    return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), root);
+                };
+
+                // First try global resolution (supports dotted path like Math.PI)
+                let resolved = resolvePath(getGlobal(), constantName);
+
+                // As a convenience, also allow constants supplied in the evaluation values map by exact name
+                if (resolved === undefined && values && Object.prototype.hasOwnProperty.call(values, constantName)) {
+                    resolved = values[constantName];
+                }
+
+                return resolved;
+            }
+        ));
     }
 
     getParser = () => {

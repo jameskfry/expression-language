@@ -113,7 +113,7 @@ export default class GetAttrNode extends Node {
         return this.attributes.is_short_circuited || (this.nodes.node instanceof GetAttrNode && this.nodes.node.isShortCircuited());
     }
 
-    toArray() {
+    toArray = () => {
         const nullSafe = this.nodes.attribute instanceof ConstantNode && this.nodes.attribute.isNullSafe;
         switch(this.attributes.type) {
             case GetAttrNode.PROPERTY_CALL:

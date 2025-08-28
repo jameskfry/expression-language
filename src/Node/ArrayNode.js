@@ -58,7 +58,7 @@ export default class ArrayNode extends Node {
         return result;
     };
 
-    toArray() {
+    toArray = () => {
         let value = {};
         for (let pair of this.getKeyValuePairs()) {
             value[pair.key.attributes.value] = pair.value;

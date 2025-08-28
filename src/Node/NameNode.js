@@ -17,7 +17,7 @@ export default class NameNode extends Node {
         return value;
     };
 
-    toArray() {
+    toArray = () => {
         return [this.attributes.name];
     }
 }
