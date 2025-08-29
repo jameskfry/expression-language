@@ -5,9 +5,56 @@ and server-side (in PHP with the Symfony/ExpressionLanguage).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## Feature parity
+
+Below is the current parity of this library with Symfony's ExpressionLanguage features. All items default to supported
+status.
+
+| Category                | Feature                                                                      | Supported |
+|-------------------------|------------------------------------------------------------------------------|-----------|
+| Literals                | Strings (single and double quotes)                                           | ✅         |
+| Literals                | Numbers (integers, decimals, decimals without leading zero) with underscores | ✅         |
+| Literals                | Arrays (JSON-like [ ... ])                                                   | ✅         |
+| Literals                | Hashes/Objects (JSON-like { key: value })                                    | ✅         |
+| Literals                | Booleans (true/false)                                                        | ✅         |
+| Literals                | null                                                                         | ✅         |
+| Literals                | Exponential/scientific notation                                              | ✅         |
+| Literals                | Block comments /* ... */ inside expressions                                  | ✅         |
+| Escapes                 | Backslash escaping in strings and regexes                                    | ✅         |
+| Escapes                 | Control characters need escaping (e.g., \n)                                  | ✅         |
+| Objects                 | Access public properties with dot syntax (obj.prop)                          | ✅         |
+| Objects                 | Call methods with dot syntax (obj.method(...))                               | ✅         |
+| Objects                 | Null-safe operator (obj?.prop / obj?.method())                               | ✅         |
+| Nullish                 | Null-coalescing operator (a ?? b)                                            | ✅         |
+| Functions               | constant()                                                                   | ✅         |
+| Functions               | enum()                                                                       | ✅         |
+| Functions               | min()                                                                        | ✅         |
+| Functions               | max()                                                                        | ✅         |
+| Arrays                  | Access array items with bracket syntax (arr[...])                            | ✅         |
+| Operators: Arithmetic   | +, -, *, /, %, **                                                            | ✅         |
+| Operators: Bitwise      | &, \| , ^                                                                    | ✅         |
+| Operators: Bitwise      | ~ (not), <<, >>                                                              | ✅         |
+| Operators: Comparison   | ==, ===, !=, !==, <, >, <=, >=                                               | ✅         |
+| Operators: Comparison   | matches (regex)                                                              | ✅         |
+| Operators: String tests | contains, starts with, ends with                                             | ✅         |
+| Operators: Logical      | not/!, and/&&, or/\|\|, xor                                                  | ✅         |
+| Operators: String       | ~ (concatenation)                                                            | ✅         |
+| Operators: Array        | in, not in (strict comparison)                                               | ✅         |
+| Operators: Numeric      | .. (range)                                                                   | ✅         |
+| Operators: Ternary      | a ? b : c, a ?: b, a ? b                                                     | ✅         |
+| Other                   | Null-safe operator (?.)                                                      | ✅         |
+| Other                   | Null-coalescing operator (??)                                                | ✅         |
+| Precedence              | Operator precedence as per Symfony docs                                      | ✅         |
+| Symfony Built-ins       | Security expression variables                                                | ⛔️        |
+| Symfony Built-ins       | Service container expression variables                                       | ⛔️        |
+| Symfony Built-ins       | Routing expression variables                                                 | ⛔️        |
+
+> Notes: Symfony Built-ins are not supported in the javascript environment
+
 ## Installation
 
 ### NPM/Yarn
+
 ```bash
 npm install expression-language
 # or
@@ -15,6 +62,7 @@ yarn add expression-language
 ```
 
 ### Browser
+
 You can also use this library directly in the browser by including it via a script tag:
 
 ```html
@@ -27,45 +75,55 @@ You can also use this library directly in the browser by including it via a scri
 ## Examples
 
 ### NPM/Yarn Setup
+
 ```javascript
-import { ExpressionLanguage } from "expression-language";
+import {ExpressionLanguage} from "expression-language";
+
 let expressionLanguage = new ExpressionLanguage();
 ```
 
 ### Browser Setup
+
 ```html
+
 <script src="https://unpkg.com/expression-language/dist/expression-language.min.js"></script>
 <script>
-  // The library is available as a global ExpressionLanguage object
-  const expressionLanguage = new ExpressionLanguage.ExpressionLanguage();
+    // The library is available as a global ExpressionLanguage object
+    const expressionLanguage = new ExpressionLanguage.ExpressionLanguage();
 </script>
 ```
 
 A complete browser example is available in the [examples/browser-usage.html](examples/browser-usage.html) file.
+
 #### Basic
+
 ```javascript
 let result = expressionLanguage.evaluate('1 + 1');
 // result is 2.
 ```
+
 #### Multiple clauses
+
 ```javascript
 let result = expressionLanguage.evaluate(
-    'a > 0 && b != a', 
+    'a > 0 && b != a',
     {
-        a: 1, 
+        a: 1,
         b: 2
     }
 );
 // result is true
 ```
+
 #### Object and Array access
+
 ```javascript
 let expression = 'a[2] === "three" and b.myMethod(a[1]) === "bar two"';
 let values = {
-    a: ["one", "two", "three"], 
+    a: ["one", "two", "three"],
     b: {
-        myProperty: "foo", 
-        myMethod: function(word) {
+        myProperty: "foo",
+        myMethod: function (word) {
             return "bar " + word;
         }
     }
@@ -88,20 +146,21 @@ If you're maintaining this package, you'll need to set up the following:
 #### NPM Publishing
 
 1. Generate an npm access token with publish permissions:
-   - Go to npmjs.com and log in
-   - Click on your profile picture → Access Tokens
-   - Click "Generate New Token" → Select "Publish"
-   
+    - Go to npmjs.com and log in
+    - Click on your profile picture → Access Tokens
+    - Click "Generate New Token" → Select "Publish"
+
 2. Add the token to your GitHub repository:
-   - Go to your GitHub repository → Settings → Secrets and variables → Actions
-   - Click "New repository secret"
-   - Name: `NPM_TOKEN`
-   - Value: Your npm access token
-   - Click "Add secret"
+    - Go to your GitHub repository → Settings → Secrets and variables → Actions
+    - Click "New repository secret"
+    - Name: `NPM_TOKEN`
+    - Value: Your npm access token
+    - Click "Add secret"
 
 #### GitHub Releases
 
 The GitHub release workflow automatically:
+
 - Checks if the package version has changed
 - Builds the project to generate distribution files
 - Creates a GitHub release with the new version tag

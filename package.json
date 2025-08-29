@@ -1,6 +1,6 @@
 {
   "name": "expression-language",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Javascript implementation of symfony/expression-language",
   "main": "lib/index.js",
   "browser": "dist/expression-language.min.js",
@@ -18,7 +18,8 @@
   "jest": {
     "testPathIgnorePatterns": [
       "<rootDir>/lib"
-    ]
+    ],
+    "reporters": ["default", "<rootDir>/jest-reporter.cjs"]
   },
   "keywords": [
     "expression",
@@ -27,8 +28,7 @@
   "author": "James K Fry",
   "license": "MIT",
   "dependencies": {
-    "locutus": "^2.0.11",
-    "yarn": "^1.22.22"
+    "locutus": "^2.0.11"
   },
   "devDependencies": {
     "@babel/cli": "^7.7.7",

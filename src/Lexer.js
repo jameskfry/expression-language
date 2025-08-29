@@ -71,6 +71,11 @@ export function tokenize(expression) {
                         cursor += (str.length);
                         //console.log(`Extracted string: ${str.captured}; Remaining: ${expression.substr(cursor)}`, cursor, expression);
                     }
+                    else if (expression.substr(cursor, 2) === "\\\\") {
+                        // Two backslashes outside of strings represent a single literal backslash token
+                        tokens.push(new Token(Token.PUNCTUATION_TYPE, "\\", cursor + 1));
+                        cursor += 2;
+                    }
                     else {
                         // If the previous token is a dot accessor ('.' or '?.'), prefer extracting a name before operators
                         const lastToken = tokens.length > 0 ? tokens[tokens.length - 1] : null;
@@ -165,6 +170,19 @@ function extractNumber(str) {
 
 
 const strRegex = /^"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'/s;
+
+function unescapeString(s, quote) {
+    // Only handle escaping of backslash and the matching quote; do NOT translate control sequences (e.g., \n)
+    // Replace escaped quote first, then collapse escaped backslashes
+    if (quote === '"') {
+        s = s.replace(/\\\"/g, '"');
+    } else if (quote === "'") {
+        s = s.replace(/\\'/g, "'");
+    }
+    // Replace double backslashes with single backslash
+    s = s.replace(/\\\\/g, '\\');
+    return s;
+}
 /**
  *
  * @param str
@@ -179,14 +197,14 @@ function extractString(str) {
 
     let m = strRegex.exec(str);
     if (m !== null && m.length > 0) {
-        if (m[1]) {
+        if (typeof m[1] !== 'undefined') {
             extracted = {
-                captured: m[1]
+                captured: unescapeString(m[1], '"')
             };
         }
         else {
             extracted = {
-                captured: m[2]
+                captured: unescapeString(m[2], "'")
             };
         }
 

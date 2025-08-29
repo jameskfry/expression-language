@@ -184,7 +184,8 @@ export default class ExpressionLanguage {
                 }
                 const getGlobal = () => (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {}));
                 const normalize = (s) => {
-                    return String(s).replace(/\\\\/g, '.').replace(/::/g, '.');
+                    // Replace single backslashes and double-colon with dots
+                    return String(s).replace(/\\/g, '.').replace(/::/g, '.');
                 };
                 const resolvePath = (root, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), root);
                 const normalized = normalize(enumName);

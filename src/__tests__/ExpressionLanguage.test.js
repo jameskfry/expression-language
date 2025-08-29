@@ -46,6 +46,65 @@ test('caching for overridden variable names', () => {
     expect(result).toBe("(a + B)");
 });
 
+test('bitwise ~', () => {
+    const el = new ExpressionLanguage();
+    const res = el.evaluate("~4");
+    expect(res).toBe(-5);
+});
+
+describe('supports all literals', () => {
+
+    const el = new ExpressionLanguage();
+
+    test("strings", () => {
+        const res = el.evaluate("'testing 1234'");
+        expect(res).toBe("testing 1234");
+
+        const res2 = el.evaluate('"testing 1234"');
+        expect(res2).toBe("testing 1234");
+    });
+
+    test("numbers", () => {
+        expect(el.evaluate('123')).toBe(123);
+        expect(el.evaluate('0.787')).toBeCloseTo(0.787);
+        expect(el.evaluate('.1234')).toBeCloseTo(0.1234);
+        expect(el.evaluate('1_000_000')).toBe(1000000);
+    });
+
+    test("arrays", () => {
+        const arr = el.evaluate('[1, 2, 3]');
+        expect(Array.isArray(arr)).toBe(true);
+        expect(arr).toEqual([1, 2, 3]);
+        expect(el.evaluate('[1, 2, 3][1]')).toBe(2);
+        // comments inside arrays should be ignored
+        const arrWithComments = el.evaluate('[1 /* a */, 2, /* b */ 3]');
+        expect(arrWithComments).toEqual([1, 2, 3]);
+    });
+
+    test('hashes', () => {
+        const res = el.evaluate("({foo: 'bar'}).foo");
+        expect(res).toBe('bar');
+    });
+
+    test("booleans", () => {
+        expect(el.evaluate('true')).toBe(true);
+        expect(el.evaluate('false')).toBe(false);
+    });
+
+    test('null', () => {
+        expect(el.evaluate('null')).toBeNull();
+    });
+
+    test('exponential', () => {
+        expect(el.evaluate('1e-2')).toBeCloseTo(0.01);
+        expect(el.evaluate('-.7_189e+10')).toBeCloseTo(-7189000000);
+    });
+
+    test('comments', () => {
+        expect(el.evaluate('/* ignored */ 1 + 2')).toBe(3);
+    });
+});
+
 test('strict equality', () => {
     let expressionLanguage = new ExpressionLanguage(),
         expression = '123 === a';
@@ -305,6 +364,15 @@ function getRegisterCallbacks() {
     ]
 }
 
+test('backslashes properly escaped and handled', () => {
+    const el = new ExpressionLanguage();
+    const res = el.evaluate('"a\\\\b" matches "/^a\\\\\\\\b$/"');
+    expect(res).toBe(true);
+
+    const res2 = el.evaluate('"\\\\"');
+    expect(res2).toBe("\\");
+});
+
 test('ternary operator supported', () => {
     let el = new ExpressionLanguage();
     for (const [expr, variables, expectedResult, expectedExceptionMessage=null] of getTernary()) {
@@ -336,13 +404,14 @@ function getTernary() {
         ['a ? \'yes\' : \'no\'', {}, 'no', 'Variable "a" is not valid'],
         ['a ?: "short-hand"', {a: "find me"}, "find me"],
         ['a ?: "short-hand"', {a: false}, "short-hand"],
+        ['a ? b', {a: false, b: 'yay'}, 'yay'],
+        ['a ? b', {a: 'yay', b: false}, 'yay']
     ]
 }
 
 test('null safe compile', () => {
     let el = new ExpressionLanguage();
     for (let oneNullSafe of getNullSafe()) {
-        let foo = oneNullSafe[1];
         let result = el.compile(oneNullSafe[0], ['foo']);
         expect(eval(result)).toBeFalsy();
     }
@@ -366,7 +435,8 @@ test('null coalescing evaluate returns default', () => {
 test('null coalescing compile returns default', () => {
     const el = new ExpressionLanguage();
     for (const [expr, foo] of getNullCoalescing()) {
-        const code = el.compile(expr, [{foo: 'foo'}]);
+        const res = el.evaluate(expr, {foo});
+        expect(res).toBe("default");
     }
 });
 

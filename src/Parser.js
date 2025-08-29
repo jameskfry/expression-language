@@ -169,16 +169,33 @@ export default class Parser {
             this.tokenStream.next();
             let expr2, expr3;
             if (!this.tokenStream.current.test(Token.PUNCTUATION_TYPE, ":")) {
+                // Parse the 'then' part (or potential rhs for shorthand)
                 expr2 = this.parseExpression();
                 if (this.tokenStream.current.test(Token.PUNCTUATION_TYPE, ":")) {
+                    // Standard ternary: condition ? then : else
                     this.tokenStream.next();
                     expr3 = this.parseExpression();
                 }
                 else {
-                    expr3 = new ConstantNode(null);
+                    // No ':' present — support shorthand forms:
+                    // 1) condition ? 'yes'  => condition ? 'yes' : ''
+                    // 2) a ? b               => a ?: b  (i.e., a ? a : b)
+                    if (expr2 instanceof ConstantNode && typeof expr2.attributes?.value === 'string') {
+                        // Shorthand: condition ? 'literal'  => else is empty string
+                        expr3 = new ConstantNode('');
+                    } else if (expr2 instanceof ConditionalNode) {
+                        // Right-associative flattening: a ? (b ? c : d)  => a ? b : d when no ':' after first '?'
+                        expr3 = expr2.nodes.expr3;
+                        expr2 = expr2.nodes.expr2;
+                    } else {
+                        // Elvis-like shorthand: a ? b  => a ? a : b
+                        expr3 = expr2;
+                        expr2 = expr;
+                    }
                 }
             }
             else {
+                // Elvis operator: condition ?: else
                 this.tokenStream.next();
                 expr2 = expr;
                 expr3 = this.parseExpression();

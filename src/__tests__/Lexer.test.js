@@ -53,6 +53,18 @@ function getTokenizeData() {
             '(3 + 5) ~ foo("bar").baz[4] - 1.99E+3 + ~qux',
         ],
         [
+            [
+                new Token(Token.NUMBER_TYPE, 0.01, 1)
+            ],
+            '1e-2'
+        ],
+        [
+            [
+                new Token(Token.NUMBER_TYPE, 1000000, 1)
+            ],
+            '1_000_000'
+        ],
+        [
             [new Token(Token.OPERATOR_TYPE, '..', 1)],
             '..',
         ],
@@ -147,6 +159,12 @@ function getTokenizeData() {
             ],
             'foo xor bar',
         ],
+        [
+            [
+                new Token(Token.PUNCTUATION_TYPE, '\\', 1)
+            ],
+            '\\\\'
+        ]
     ];
 }
 
