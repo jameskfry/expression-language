@@ -1,6 +1,6 @@
 import ExpressionLanguage from "./ExpressionLanguage";
 import {tokenize} from "./Lexer";
-import Parser from "./Parser";
+import Parser, {IGNORE_UNKNOWN_VARIABLES, IGNORE_UNKNOWN_FUNCTIONS} from "./Parser";
 import ExpressionFunction from "./ExpressionFunction";
 import Compiler from "./Compiler";
 import ArrayAdapter from "./Cache/ArrayAdapter";
@@ -15,6 +15,8 @@ export default ExpressionLanguage;
 export {
     ExpressionLanguage,
     Parser,
+    IGNORE_UNKNOWN_VARIABLES,
+    IGNORE_UNKNOWN_FUNCTIONS,
     tokenize,
     ExpressionFunction,
     Compiler,

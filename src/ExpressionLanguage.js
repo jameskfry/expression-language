@@ -1,5 +1,5 @@
 import {tokenize} from "./Lexer";
-import Parser from "./Parser";
+import Parser, {IGNORE_UNKNOWN_VARIABLES} from "./Parser";
 import Compiler from "./Compiler";
 import ParsedExpression from "./ParsedExpression";
 import ArrayAdapter from "./Cache/ArrayAdapter";
@@ -9,6 +9,7 @@ import ExpressionFunction from "./ExpressionFunction";
 export default class ExpressionLanguage {
     constructor(cache = null, providers = []) {
         this.functions = [];
+        this.lexer = null;
         this.parser = null;
         this.compiler = null;
 
@@ -50,9 +51,10 @@ export default class ExpressionLanguage {
      *
      * @param {Expression|string} expression The expression to parse
      * @param {Array} names An array of valid names
+     * @param {int} flags
      * @returns {ParsedExpression} A ParsedExpression instance
      */
-    parse = (expression, names) => {
+    parse = (expression, names, flags=0) => {
         if (expression instanceof ParsedExpression) {
             return expression;
         }
@@ -85,7 +87,7 @@ export default class ExpressionLanguage {
         let cacheItem = this.cache.getItem(this.fixedEncodeURIComponent(expression + "//" + cacheKeyItems.join("|"))),
             parsedExpression = cacheItem.get();
         if (null === parsedExpression) {
-            let nodes = this.getParser().parse(tokenize(expression), names);
+            let nodes = this.getParser().parse(this.getLexer().tokenize(expression), names, flags);
             parsedExpression = new ParsedExpression(expression, nodes);
 
             cacheItem.set(parsedExpression);
@@ -94,6 +96,21 @@ export default class ExpressionLanguage {
 
         return parsedExpression;
     };
+
+    lint = (expression, names=null, flags=0) => {
+        if (null === names) {
+            console.log("Deprecated: passing \"null\" as the second argument of lint is deprecated, pass IGNORE_UNKNOWN_VARIABLES instead as the third argument");
+            flags |= IGNORE_UNKNOWN_VARIABLES;
+            names = [];
+        }
+
+        if (expression instanceof ParsedExpression) {
+            return;
+        }
+
+        // Ensure parser is initialized and pass names/flags to parser.lint
+        this.getParser().lint(this.getLexer().tokenize(expression), names, flags);
+    }
 
     fixedEncodeURIComponent = (str) => {
         return encodeURIComponent(str).replace(/[!'()*]/g, function (c) {
@@ -193,6 +210,16 @@ export default class ExpressionLanguage {
                 return resolvePath(getGlobal(), normalized);
             }
         ));
+    }
+
+    getLexer = () => {
+        if (null === this.lexer) {
+            this.lexer = {
+                tokenize: tokenize
+            };
+        }
+
+        return this.lexer;
     }
 
     getParser = () => {
