@@ -413,6 +413,7 @@ test('null safe compile', () => {
     let el = new ExpressionLanguage();
     for (let oneNullSafe of getNullSafe()) {
         let result = el.compile(oneNullSafe[0], ['foo']);
+        const foo = oneNullSafe[1];
         expect(eval(result)).toBeFalsy();
     }
 });
