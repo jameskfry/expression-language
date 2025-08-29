@@ -305,6 +305,40 @@ function getRegisterCallbacks() {
     ]
 }
 
+test('ternary operator supported', () => {
+    let el = new ExpressionLanguage();
+    for (const [expr, variables, expectedResult, expectedExceptionMessage=null] of getTernary()) {
+        if (expectedExceptionMessage) {
+            try {
+                const res = el.evaluate(expr, variables);
+                console.log("This expression should have caused an error: " + expr, {
+                    res
+                });
+                expect(true).toBe(false);
+            }
+            catch(err) {
+                expect(err.message).toBe(expectedExceptionMessage);
+            }
+        }
+        else {
+            const res = el.evaluate(expr, variables);
+            expect(res).toBe(expectedResult);
+        }
+    }
+});
+
+function getTernary() {
+    return [
+        ["a ? 'yes' : 'no'", {a: true}, 'yes'],
+        ['a ? "yes" : "no"', {a: true}, 'yes'],
+        ['a ? \'yes\' : \'no\'', {a: false}, 'no'],
+        ['a ? \'yes\' : \'no\'', {a: null}, 'no'],
+        ['a ? \'yes\' : \'no\'', {}, 'no', 'Variable "a" is not valid'],
+        ['a ?: "short-hand"', {a: "find me"}, "find me"],
+        ['a ?: "short-hand"', {a: false}, "short-hand"],
+    ]
+}
+
 test('null safe compile', () => {
     let el = new ExpressionLanguage();
     for (let oneNullSafe of getNullSafe()) {
