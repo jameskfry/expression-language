@@ -309,18 +309,7 @@ This package uses GitHub Actions for automated workflows:
 If you're maintaining this package, you'll need to set up the following:
 
 #### NPM Publishing
-
-1. Generate an npm access token with publish permissions:
-    - Go to npmjs.com and log in
-    - Click on your profile picture → Access Tokens
-    - Click "Generate New Token" → Select "Publish"
-
-2. Add the token to your GitHub repository:
-    - Go to your GitHub repository → Settings → Secrets and variables → Actions
-    - Click "New repository secret"
-    - Name: `NPM_TOKEN`
-    - Value: Your npm access token
-    - Click "Add secret"
+Set up trusted publisher in npmjs.org by following the instructions [here](https://docs.npmjs.com/trusted-publishers).
 
 #### GitHub Releases
 
