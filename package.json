@@ -3,6 +3,7 @@
   "version": "2.5.0",
   "description": "Javascript implementation of symfony/expression-language",
   "main": "lib/index.js",
+  "types": "dist/index.d.ts",
   "browser": "dist/expression-language.min.js",
   "repository": {
     "type": "git",
@@ -10,7 +11,7 @@
   },
   "scripts": {
     "build": "rm -rf lib && babel src -d lib",
-    "build:browser": "rollup -c",
+    "build:browser": "rollup -c && cp types/index.d.ts dist/index.d.ts",
     "build:all": "npm run build && npm run build:browser",
     "prepublishOnly": "npm run build:all",
     "test": "jest"
