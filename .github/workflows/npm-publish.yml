@@ -46,14 +46,14 @@ jobs:
       - name: Generate changelog
         id: changelog
         if: steps.version-check.outputs.changed == 'true'
-        uses: metcalfc/changelog-generator@v4.1.0
+        uses: metcalfc/changelog-generator@v4.6.2
         with:
           myToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
         if: steps.version-check.outputs.changed == 'true'
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version-check.outputs['current-version'] }}
           name: Release v${{ steps.version-check.outputs['current-version'] }}
@@ -64,6 +64,7 @@ jobs:
           files: |
             dist/expression-language.js
             dist/expression-language.min.js
+            dist/index.d.ts
           draft: false
           prerelease: false
         env:
