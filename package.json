@@ -29,7 +29,7 @@
   "author": "James K Fry",
   "license": "MIT",
   "dependencies": {
-    "locutus": "^2.0.11"
+    "locutus": "^3.0.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.7.7",
