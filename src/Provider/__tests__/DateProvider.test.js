@@ -1,7 +1,7 @@
 import ExpressionLanguage from "../../ExpressionLanguage";
 import DateProvider from "../DateProvider";
-import date from "locutus/php/datetime/date";
-import strtotime from "locutus/php/datetime/strtotime";
+import {date} from "locutus/php/datetime/date";
+import {strtotime} from "locutus/php/datetime/strtotime";
 
 test('date evaluate', () => {
     let el = new ExpressionLanguage(null, [new DateProvider()]);

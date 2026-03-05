@@ -242,11 +242,11 @@ const el = new ExpressionLanguage();
 globalThis.mySum = (a, b) => a + b; // or window.mySum in browser
 const sumFn = ExpressionFunction.fromJavascript('mySum');
 el.addFunction(sumFn);
-console.log(el.evaluate('mySum(20, 22)')); // 42
-
 // 2) Namespaced (dotted) function requires an explicit expression name
 const maxFn = ExpressionFunction.fromJavascript('Math.max', 'max');
 el.addFunction(maxFn);
+
+console.log(el.evaluate('mySum(20, 22)')); // 42
 console.log(el.evaluate('max(1, 3, 2)')); // 3
 
 // Note: min/max are already built-in and compile to Math.min/Math.max.

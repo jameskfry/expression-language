@@ -54,3 +54,26 @@ test('isset with not operator', () => {
     let result = el.evaluate("not isset(\"foo.baz\") and foo.bar == 'yep'", {foo: {bar: 'yep'}});
     expect(result).toBe(true);
 });
+
+test('isset with resolved (non-string) arguments', () => {
+    let el = new ExpressionLanguage(null, [new BasicProvider()]);
+
+    // Resolved values that are set
+    expect(el.evaluate('isset(foo.bar)', { foo: { bar: 1 } })).toBe(true);
+    expect(el.evaluate('isset(foo.bar)', { foo: { bar: 'hello' } })).toBe(true);
+    expect(el.evaluate('isset(foo.bar)', { foo: { bar: 0 } })).toBe(true);
+    expect(el.evaluate('isset(foo.bar)', { foo: { bar: false } })).toBe(true);
+    expect(el.evaluate('isset(foo.bar)', { foo: { bar: '' } })).toBe(true);
+
+    // Resolved values that are not set
+    expect(el.evaluate('isset(foo)', { foo: null })).toBe(false);
+    expect(el.evaluate('isset(foo)', { foo: undefined })).toBe(false);
+});
+
+test('isset with null-safe resolved arguments', () => {
+    let el = new ExpressionLanguage(null, [new BasicProvider()]);
+
+    // null-safe operator resolves to null when path doesn't exist
+    expect(el.evaluate('isset(foo?.bar)', { foo: null })).toBe(false);
+    expect(el.evaluate('isset(foo?.bar)', { foo: { bar: 'yep' } })).toBe(true);
+});

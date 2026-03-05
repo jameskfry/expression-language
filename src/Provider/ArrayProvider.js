@@ -1,8 +1,8 @@
 import ExpressionFunction from "../ExpressionFunction";
 import AbstractProvider from "./AbstractProvider";
-import array_intersect from "locutus/php/array/array_intersect";
-import count from "locutus/php/array/count";
-import implode from "locutus/php/strings/implode";
+import {array_intersect} from "locutus/php/array/array_intersect";
+import {count} from "locutus/php/array/count";
+import {implode} from "locutus/php/strings/implode";
 
 export default class ArrayProvider extends AbstractProvider {
     getFunctions() {

@@ -1,12 +1,12 @@
 import ExpressionFunction from "../ExpressionFunction";
 import AbstractProvider from "./AbstractProvider";
-import explode from "locutus/php/strings/explode";
-import strlen from "locutus/php/strings/strlen";
-import strtolower from "locutus/php/strings/strtolower";
-import strtoupper from "locutus/php/strings/strtoupper";
-import substr from "locutus/php/strings/substr";
-import strstr from "locutus/php/strings/strstr";
-import stristr from "locutus/php/strings/stristr";
+import {explode} from "locutus/php/strings/explode";
+import {strlen} from "locutus/php/strings/strlen";
+import {strtolower} from "locutus/php/strings/strtolower";
+import {strtoupper} from "locutus/php/strings/strtoupper";
+import {substr} from "locutus/php/strings/substr";
+import {strstr} from "locutus/php/strings/strstr";
+import {stristr} from "locutus/php/strings/stristr";
 
 export default class StringProvider extends AbstractProvider {
     getFunctions() {

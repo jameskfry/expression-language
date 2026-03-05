@@ -15,6 +15,21 @@ export const issetFn = new ExpressionFunction(
         return `isset(${variable})`;
     },
     function evaluator(values, variable) {
+        // If the argument was already resolved (not a string path),
+        // check whether the resolved value is set (not null/undefined).
+        if (typeof variable !== 'string') {
+            return variable !== null && variable !== undefined;
+        }
+
+        // For string arguments, determine if it's a variable path (e.g. "foo.bar")
+        // or an already-resolved string value (e.g. foo.bar resolved to "hello").
+        // If the base name references a known variable, treat it as a path to resolve.
+        let basePart = variable.split(/[.\[]/)[0];
+        if (!(basePart in values)) {
+            // Not a known variable path — this is a resolved string value.
+            return true;
+        }
+
         let baseName = "",
             parts = [],
             gathering = "",
@@ -60,7 +75,6 @@ export const issetFn = new ExpressionFunction(
         }
 
         if (parts.length > 0) {
-            //console.log("Parts: ", parts);
             if (values[baseName] !== undefined) {
                 let baseVar = values[baseName];
                 for (let part of parts) {

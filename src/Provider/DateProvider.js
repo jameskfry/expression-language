@@ -1,7 +1,7 @@
 import AbstractProvider from "./AbstractProvider";
 import ExpressionFunction from "../ExpressionFunction";
-import date from "locutus/php/datetime/date";
-import strtotime from "locutus/php/datetime/strtotime";
+import {date} from "locutus/php/datetime/date";
+import {strtotime} from "locutus/php/datetime/strtotime";
 
 export default class DateProvider extends AbstractProvider {
     getFunctions() {
