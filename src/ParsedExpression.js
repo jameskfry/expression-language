@@ -84,7 +84,7 @@ export default class ParsedExpression extends Expression {
                     return arrNode;
                 }
                 case 'FunctionNode': {
-                    const args = buildNode(n.nodes?.arguments);
+                    const args = buildNode(n.nodes?.fnArguments);
                     return new FunctionNode(n.attributes?.name, args);
                 }
                 case 'GetAttrNode': {

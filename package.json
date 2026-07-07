@@ -32,6 +32,7 @@
   "author": "James K Fry",
   "license": "MIT",
   "dependencies": {
+    "dayjs": "^1.11.21",
     "locutus": "^3.0.0"
   },
   "devDependencies": {

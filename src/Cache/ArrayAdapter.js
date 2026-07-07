@@ -58,7 +58,7 @@ export default class ArrayAdapter {
     };
 
     save = (item) => {
-        if (!item instanceof CacheItem) {
+        if (!(item instanceof CacheItem)) {
             return false;
         }
 

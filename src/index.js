@@ -9,6 +9,7 @@ import BasicProvider from "./Provider/BasicProvider";
 import StringProvider from "./Provider/StringProvider";
 import ArrayProvider from "./Provider/ArrayProvider";
 import DateProvider from "./Provider/DateProvider";
+import defaultCustomFunctions from "./defaultCustomFunctions";
 
 export default ExpressionLanguage;
 
@@ -25,5 +26,6 @@ export {
     BasicProvider,
     StringProvider,
     ArrayProvider,
-    DateProvider
+    DateProvider,
+    defaultCustomFunctions
 }

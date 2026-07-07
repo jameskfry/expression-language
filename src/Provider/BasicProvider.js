@@ -1,7 +1,7 @@
 import ExpressionFunction from "../ExpressionFunction";
 import AbstractProvider from "./AbstractProvider";
 
-export default class ArrayProvider extends AbstractProvider {
+export default class BasicProvider extends AbstractProvider {
     getFunctions() {
         return [
             issetFn

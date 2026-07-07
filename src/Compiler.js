@@ -90,6 +90,18 @@ export default class Compiler {
         else if (typeof value === 'boolean') {
             this.raw(value ? 'true' : 'false');
         }
+        else if (Array.isArray(value)) {
+            this.raw('[');
+            let first = true;
+            for (let oneValue of value) {
+                if (!first) {
+                    this.raw(', ');
+                }
+                first = false;
+                this.repr(oneValue);
+            }
+            this.raw(']');
+        }
         else if (typeof value === 'object') {
             this.raw('{');
             let first = true;
@@ -103,18 +115,6 @@ export default class Compiler {
                 this.repr(value[oneKey]);
             }
             this.raw('}');
-        }
-        else if (Array.isArray(value)) {
-            this.raw('[');
-            let first = true;
-            for (let oneValue of value) {
-                if (!first) {
-                    this.raw(', ');
-                }
-                first = false;
-                this.repr(oneValue);
-            }
-            this.raw(']');
         }
         else {
             this.string(value);

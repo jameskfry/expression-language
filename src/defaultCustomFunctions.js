@@ -1,4 +1,4 @@
-import moment from "moment";
+import dayjs from "dayjs";
 
 export const isString = s => {
     return typeof s === "string";
@@ -39,7 +39,7 @@ export const isCurrency = s => {
 };
 
 export const now = () => {
-    return moment();
+    return dayjs();
 };
 
 export const dateFormat = (m, format) => {

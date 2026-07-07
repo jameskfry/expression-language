@@ -32,6 +32,12 @@ test('compileActuallyCompilesAllNodes', () => {
     }
 });
 
+test('toArray/dump throws on the base Node class when a subclass has not overridden it', () => {
+    let node = new Node();
+    expect(() => node.toArray()).toThrow('Dumping a "Node" instance is not supported yet.');
+    expect(() => node.dump()).toThrow('Dumping a "Node" instance is not supported yet.');
+});
+
 test('evaluateActuallyEvaluatesAllNodes', () => {
     const nodes = [];
     for (let i = 1; i <= 3; i++) {

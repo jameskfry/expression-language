@@ -397,3 +397,33 @@ test('parse', () => {
         expect(generated.toString()).toBe(parseDatum[0].toString());
     }
 });
+
+test('a shorthand ternary without a colon uses an empty string for the else branch', () => {
+    let parser = new Parser();
+    let node = parser.parse(tokenize("true ? 'yes'"), []);
+
+    expect(node).toBeInstanceOf(ConditionalNode);
+    expect(node.nodes.expr3).toBeInstanceOf(ConstantNode);
+    expect(node.nodes.expr3.attributes.value).toBe('');
+    expect(node.evaluate({}, {})).toBe('yes');
+});
+
+test('a parenthesized expression can be used as a hash key', () => {
+    let parser = new Parser();
+    let node = parser.parse(tokenize("{(1 + 1): 'two'}"), []);
+
+    expect(node.evaluate({}, {})).toEqual({2: 'two'});
+});
+
+test('parseExpression guards against runaway recursion on a pathologically long binary chain', () => {
+    let parser = new Parser();
+    let expression = '1' + ' + 1'.repeat(1005);
+
+    expect(() => parser.parse(tokenize(expression))).toThrow('Way to many executions');
+});
+
+test("Parser's own lint supports deprecated null names by converting to IGNORE_UNKNOWN_VARIABLES", () => {
+    let parser = new Parser();
+    // Should not throw despite "foo" being unknown, since names === null maps to IGNORE_UNKNOWN_VARIABLES.
+    expect(() => parser.lint(tokenize('foo.bar'), null, 0)).not.toThrow();
+});
