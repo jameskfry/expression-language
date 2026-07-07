@@ -190,6 +190,58 @@ test('tokenize throws error on unclosed brace', () => {
     }
 });
 
+test('tokenize ignores an unclosed block comment through the end of the expression', () => {
+    let stream = tokenize('65536 /* unclosed');
+
+    expect(stream.tokens).toHaveLength(2);
+    expect(stream.tokens[0].type).toBe(Token.NUMBER_TYPE);
+    expect(stream.tokens[0].value).toBe(65536);
+    expect(stream.tokens[1].type).toBe(Token.EOF_TYPE);
+});
+
+test('tokenize throws on an unexpected closing punctuation with nothing open', () => {
+    expect(() => tokenize(')')).toThrow('Unexpected ")"');
+});
+
+// Token instances carry per-instance arrow-function methods, so toEqual (which compares those
+// function references) can't be used across separately-constructed tokens; compare fields instead.
+function expectToken(token, type, value, cursor) {
+    expect(token.type).toBe(type);
+    expect(token.value).toBe(value);
+    expect(token.cursor).toBe(cursor);
+}
+
+test('tokenize falls back to a symbolic operator right after a dot accessor when no name matches', () => {
+    // A symbolic operator (not identifier-shaped) can't be matched by extractName, so this exercises
+    // the extractOperator fallback inside the "preferName" branch.
+    let stream = tokenize('foo.+');
+
+    expectToken(stream.tokens[0], Token.NAME_TYPE, 'foo', 1);
+    expectToken(stream.tokens[1], Token.PUNCTUATION_TYPE, '.', 4);
+    expectToken(stream.tokens[2], Token.OPERATOR_TYPE, '+', 5);
+});
+
+test('tokenize treats a "?." or "??" immediately after a dot accessor as its own punctuation token', () => {
+    let stream = tokenize('foo.?.bar');
+
+    expectToken(stream.tokens[0], Token.NAME_TYPE, 'foo', 1);
+    expectToken(stream.tokens[1], Token.PUNCTUATION_TYPE, '.', 4);
+    expectToken(stream.tokens[2], Token.PUNCTUATION_TYPE, '?.', 5);
+    expectToken(stream.tokens[3], Token.NAME_TYPE, 'bar', 7);
+});
+
+test('tokenize treats a lone ".", ",", "?", or ":" right after a dot accessor as its own punctuation token', () => {
+    let stream = tokenize('foo.:');
+
+    expectToken(stream.tokens[0], Token.NAME_TYPE, 'foo', 1);
+    expectToken(stream.tokens[1], Token.PUNCTUATION_TYPE, '.', 4);
+    expectToken(stream.tokens[2], Token.PUNCTUATION_TYPE, ':', 5);
+});
+
+test('tokenize throws on an unexpected character right after a dot accessor', () => {
+    expect(() => tokenize('foo.$')).toThrow('Unexpected character "$"');
+});
+
 test('tokenize', () => {
     let data = getTokenizeData();
     for (let tokenizeData of data) {

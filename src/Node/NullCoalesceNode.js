@@ -28,7 +28,7 @@ export default class NullCoalesceNode extends Node {
     }
 
     _addNullCoalesceAttributeToGetAttrNodes = (node) => {
-        if (!node instanceof GetAttrNode) {
+        if (!(node instanceof GetAttrNode)) {
             return;
         }
 

@@ -42,3 +42,15 @@ test('array_intersect compile', () => {
     let result = el.compile('array_intersect(["1", "2", "3"], ["1", "2", "3"], ["2", "3"])');
     expect(result).toBe('array_intersect(["1", "2", "3"], ["1", "2", "3"], ["2", "3"])');
 });
+
+test('array_intersect compile with a single array argument (no additional args)', () => {
+    let el = new ExpressionLanguage(null, [new ArrayProvider()]);
+    let result = el.compile('array_intersect(["1", "2", "3"])');
+    expect(result).toBe('array_intersect(["1", "2", "3"])');
+});
+
+test('array_intersect evaluate with associative-object (non-array) arguments preserves keys', () => {
+    let el = new ExpressionLanguage(null, [new ArrayProvider()]);
+    let result = el.evaluate('array_intersect({a: "1", b: "2", c: "3"}, {x: "2", y: "3"})');
+    expect(result).toEqual({b: "2", c: "3"});
+});

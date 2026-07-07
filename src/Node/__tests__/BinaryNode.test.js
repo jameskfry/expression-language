@@ -12,6 +12,8 @@ function getEvaluateData()
     return [
         [true, new BinaryNode('or', new ConstantNode(true), new ConstantNode(false))],
         [true, new BinaryNode('||', new ConstantNode(true), new ConstantNode(false))],
+        // Left operand falsy: the right operand must actually be evaluated (no short-circuit).
+        [true, new BinaryNode('or', new ConstantNode(false), new ConstantNode(true))],
         [false, new BinaryNode('xor', new ConstantNode(true), new ConstantNode(true))],
         [false, new BinaryNode('and', new ConstantNode(true), new ConstantNode(false))],
         [false, new BinaryNode('&&', new ConstantNode(true), new ConstantNode(false))],

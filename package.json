@@ -1,6 +1,6 @@
 {
   "name": "expression-language",
-  "version": "2.5.4",
+  "version": "2.6.0",
   "description": "Javascript implementation of symfony/expression-language",
   "main": "lib/index.js",
   "types": "dist/index.d.ts",
@@ -32,6 +32,7 @@
   "author": "James K Fry",
   "license": "MIT",
   "dependencies": {
+    "dayjs": "^1.11.21",
     "locutus": "^3.0.0"
   },
   "devDependencies": {

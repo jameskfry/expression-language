@@ -52,7 +52,7 @@ export class TokenStream {
     isEqualTo = (ts) => {
         if (ts === null ||
             ts === undefined ||
-            !ts instanceof TokenStream) {
+            !(ts instanceof TokenStream)) {
             return false;
         }
 
@@ -92,6 +92,7 @@ export class TokenStream {
                 if (ts.position < ts.tokens.length - 1) {
                     ts.next();
                 }
+                index++;
             }
             ts.position = tsStartPosition;
         }
@@ -123,7 +124,7 @@ export class Token {
     }
 
     isEqualTo = (t) => {
-        if (t === null || t === undefined || !t instanceof Token) {
+        if (t === null || t === undefined || !(t instanceof Token)) {
             return false;
         }
 

@@ -51,11 +51,11 @@ export default class GetAttrNode extends Node {
                     return null;
                 }
 
+                let property = this.nodes.attribute.attributes.value;
                 if (typeof obj !== "object") {
                     throw new Error(`Unable to get property "${property}" on a non-object: ` + (typeof obj));
                 }
 
-                let property = this.nodes.attribute.attributes.value;
                 if (this.attributes.is_null_coalesce) {
                     return obj[property] ?? null;
                 }

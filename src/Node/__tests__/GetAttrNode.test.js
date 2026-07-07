@@ -102,3 +102,33 @@ test('dump GetAttrNode', () => {
         expect(dumpParams[1].dump()).toBe(dumpParams[0]);
     }
 });
+
+test('dump renders a null-safe property access with "?." instead of "."', () => {
+    let node = new GetAttrNode(new NameNode('foo'), new ConstantNode('bar', true, true), new ArgumentsNode(), GetAttrNode.PROPERTY_CALL);
+    expect(node.dump()).toBe('foo?.bar');
+});
+
+test('evaluate throws when accessing a property on a non-object', () => {
+    let node = new GetAttrNode(new NameNode('foo'), new ConstantNode('bar', true), new ArgumentsNode(), GetAttrNode.PROPERTY_CALL);
+    expect(() => node.evaluate({}, {foo: 5})).toThrow('Unable to get property "bar" on a non-object: number');
+});
+
+test('evaluate throws when calling a method on a non-object', () => {
+    let node = new GetAttrNode(new NameNode('foo'), new ConstantNode('bar', true), new ArgumentsNode(), GetAttrNode.METHOD_CALL);
+    expect(() => node.evaluate({}, {foo: 5})).toThrow('Unable to call method "bar" on a non-object: number');
+});
+
+test('evaluate throws when calling an undefined method', () => {
+    let node = new GetAttrNode(new NameNode('foo'), new ConstantNode('bar', true), new ArgumentsNode(), GetAttrNode.METHOD_CALL);
+    expect(() => node.evaluate({}, {foo: {}})).toThrow('Method "bar" is undefined on object.');
+});
+
+test('evaluate throws when the resolved property is not a function', () => {
+    let node = new GetAttrNode(new NameNode('foo'), new ConstantNode('bar', true), new ArgumentsNode(), GetAttrNode.METHOD_CALL);
+    expect(() => node.evaluate({}, {foo: {bar: 5}})).toThrow('Method "bar" is not a function on object.');
+});
+
+test('evaluate throws when indexing a non-array, non-object value', () => {
+    let node = new GetAttrNode(new NameNode('foo'), new ConstantNode(0), new ArgumentsNode(), GetAttrNode.ARRAY_CALL);
+    expect(() => node.evaluate({}, {foo: 5})).toThrow('Unable to get an item on a non-array: number');
+});

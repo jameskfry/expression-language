@@ -38,7 +38,10 @@ function getDumpData() {
         ['{\"one\": 1, "c": true, \"b\": "a"}', new ConstantNode({one: 1, c: true, b: 'a'})],
         ['{"a\\"b": "c", "a\\\\b": "d"}', new ConstantNode({'a"b': 'c', 'a\\b': "d"})],
         ['["c","d"]', new ConstantNode(["c", "d"])],
-        ['{"a": ["b"]}', new ConstantNode({a: ["b"]})]
+        ['{"a": ["b"]}', new ConstantNode({a: ["b"]})],
+        // An empty object is neither an array nor considered a "hash" (isHash finds no non-sequential
+        // key), so none of toArray's branches match and it dumps to nothing.
+        ['', new ConstantNode({})]
     ]
 }
 

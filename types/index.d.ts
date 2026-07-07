@@ -99,6 +99,7 @@ declare namespace ExpressionLanguage {
     StringProvider,
     ArrayProvider,
     DateProvider,
+    defaultCustomFunctions,
     // Additional exports
     Expression,
     ParsedExpression,
@@ -329,6 +330,23 @@ declare class ArrayProvider extends AbstractProvider {
 declare class DateProvider extends AbstractProvider {
   getFunctions(): ExpressionFunction[];
 }
+
+interface DefaultCustomFunctions {
+  isString(value: unknown): boolean;
+  strLen(value: unknown): number;
+  isEmail(value: unknown): boolean;
+  isPhone(value: unknown): boolean;
+  isNull(value: unknown): boolean;
+  isCurrency(value: unknown): boolean;
+  now(): import('dayjs').Dayjs;
+  dateFormat(value: import('dayjs').Dayjs, format: string): string;
+  year(value: import('dayjs').Dayjs): string;
+  date(value: import('dayjs').Dayjs): string;
+  string(value: unknown): string;
+  int(value: unknown): number;
+}
+
+declare const defaultCustomFunctions: DefaultCustomFunctions;
 
 declare class Expression {
   constructor(expression: string);

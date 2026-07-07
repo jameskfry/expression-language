@@ -35,4 +35,12 @@ describe('ExpressionLanguage.lint and flags', () => {
         // Should not throw because names === null maps to IGNORE_UNKNOWN_VARIABLES internally
         el.lint('foo.bar', null, 0);
     });
+
+    test('lint is a no-op for an already-parsed ParsedExpression', () => {
+        const el = new ExpressionLanguage();
+        const parsed = el.parse('myFn(foo)', [], IGNORE_UNKNOWN_FUNCTIONS | IGNORE_UNKNOWN_VARIABLES);
+
+        // Passing the already-parsed expression must short-circuit and not re-lint/re-throw.
+        expect(el.lint(parsed)).toBeUndefined();
+    });
 });

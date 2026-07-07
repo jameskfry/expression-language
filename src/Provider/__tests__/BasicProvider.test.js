@@ -77,3 +77,22 @@ test('isset with null-safe resolved arguments', () => {
     expect(el.evaluate('isset(foo?.bar)', { foo: null })).toBe(false);
     expect(el.evaluate('isset(foo?.bar)', { foo: { bar: 'yep' } })).toBe(true);
 });
+
+test('isset compile', () => {
+    let el = new ExpressionLanguage(null, [new BasicProvider()]);
+    let result = el.compile('isset("foo.bar")', ['foo']);
+    expect(result).toBe('isset("foo.bar")');
+});
+
+test('isset is false for a compound path whose base variable is present but undefined', () => {
+    let el = new ExpressionLanguage(null, [new BasicProvider()]);
+    let result = el.evaluate("isset(\"foo['bar']\")", {foo: undefined});
+    expect(result).toBe(false);
+});
+
+test('isset with a bare (non-compound) path string checks the variable directly', () => {
+    let el = new ExpressionLanguage(null, [new BasicProvider()]);
+
+    expect(el.evaluate('isset("foo")', {foo: 'value'})).toBe(true);
+    expect(el.evaluate('isset("foo")', {foo: undefined})).toBe(false);
+});
