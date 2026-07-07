@@ -82,9 +82,9 @@ test('string converts values to their string representation', () => {
     expect(string("already a string")).toBe("already a string");
 });
 
-test('string throws on null/undefined (no null guard before accessing toString)', () => {
-    expect(() => string(null)).toThrow();
-    expect(() => string(undefined)).toThrow();
+test('string returns an empty string for null/undefined', () => {
+    expect(string(null)).toBe("");
+    expect(string(undefined)).toBe("");
 });
 
 test('int parses numeric strings and returns NaN for non-numeric input', () => {

@@ -419,7 +419,7 @@ test('parseExpression guards against runaway recursion on a pathologically long 
     let parser = new Parser();
     let expression = '1' + ' + 1'.repeat(1005);
 
-    expect(() => parser.parse(tokenize(expression))).toThrow('Way to many executions');
+    expect(() => parser.parse(tokenize(expression))).toThrow('Too many executions');
 });
 
 test("Parser's own lint supports deprecated null names by converting to IGNORE_UNKNOWN_VARIABLES", () => {

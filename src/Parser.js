@@ -108,7 +108,7 @@ export default class Parser {
         let token = this.tokenStream.current;
         this.nestedExecutions++;
         if (this.nestedExecutions > 1000) {
-            throw new Error("Way to many executions on '" + token.toString() + "' of '" + this.tokenStream.toString() + "'");
+            throw new Error("Too many executions on '" + token.toString() + "' of '" + this.tokenStream.toString() + "'");
         }
 
         //console.log("Parsing: ", token);

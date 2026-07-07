@@ -55,6 +55,10 @@ export const date = m => {
 };
 
 export const string = s => {
+    if (s === null || s === undefined) {
+        return "";
+    }
+
     if (s.toString !== undefined) {
         return s.toString();
     }
