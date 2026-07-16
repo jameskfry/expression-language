@@ -110,12 +110,12 @@ function getCompileData()
         ['Math.pow(5, 2)', new BinaryNode('**', new ConstantNode(5), new ConstantNode(2))],
         ['("a" . "b")', new BinaryNode('~', new ConstantNode('a'), new ConstantNode('b'))],
 
-        ['includes("a", ["a", "b"])', new BinaryNode('in', new ConstantNode('a'), arr)],
-        ['includes("c", ["a", "b"])', new BinaryNode('in', new ConstantNode('c'), arr)],
-        ['!includes("c", ["a", "b"])', new BinaryNode('not in', new ConstantNode('c'), arr)],
-        ['!includes("a", ["a", "b"])', new BinaryNode('not in', new ConstantNode('a'), arr)],
+        ['(function(__l, __r){return __r.indexOf(__l) >= 0;})("a", ["a", "b"])', new BinaryNode('in', new ConstantNode('a'), arr)],
+        ['(function(__l, __r){return __r.indexOf(__l) >= 0;})("c", ["a", "b"])', new BinaryNode('in', new ConstantNode('c'), arr)],
+        ['(function(__l, __r){return __r.indexOf(__l) === -1;})("c", ["a", "b"])', new BinaryNode('not in', new ConstantNode('c'), arr)],
+        ['(function(__l, __r){return __r.indexOf(__l) === -1;})("a", ["a", "b"])', new BinaryNode('not in', new ConstantNode('a'), arr)],
 
-        ['range(1, 3)', new BinaryNode('..', new ConstantNode(1), new ConstantNode(3))],
+        ['(function(__s, __e){var __r=[];for(var __i=__s;__i<=__e;__i++){__r.push(__i);}return __r;})(1, 3)', new BinaryNode('..', new ConstantNode(1), new ConstantNode(3))],
 
         ['/^[a-z]+\$/i.test("abc")', new BinaryNode('matches', new ConstantNode('abc'), new ConstantNode('/^[a-z]+$/i', true))],
 
@@ -209,5 +209,30 @@ test('compile BinaryNode', () => {
 test('dump BinaryNode', () => {
     for (let dumpParams of getDumpData()) {
         expect(dumpParams[1].dump()).toBe(dumpParams[0]);
+    }
+});
+
+test('compiled "in", "not in" and ".." are self-contained (no undefined globals)', () => {
+    for (let [operator, node] of [
+        ['in', new BinaryNode('in', new ConstantNode('a'), (() => {
+            let arr = new ArrayNode();
+            arr.addElement(new ConstantNode('a'));
+            arr.addElement(new ConstantNode('b'));
+            return arr;
+        })())],
+        ['not in', new BinaryNode('not in', new ConstantNode('c'), (() => {
+            let arr = new ArrayNode();
+            arr.addElement(new ConstantNode('a'));
+            arr.addElement(new ConstantNode('b'));
+            return arr;
+        })())],
+        ['..', new BinaryNode('..', new ConstantNode(1), new ConstantNode(3))],
+    ]) {
+        let compiler = new Compiler({});
+        node.compile(compiler);
+        let evaluated = node.evaluate({}, {});
+        // eslint-disable-next-line no-eval
+        let compiledResult = eval(compiler.getSource());
+        expect(compiledResult).toEqual(evaluated);
     }
 });

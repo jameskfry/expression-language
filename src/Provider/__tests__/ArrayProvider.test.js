@@ -1,5 +1,6 @@
 import ExpressionLanguage from "../../ExpressionLanguage";
 import ArrayProvider from "../ArrayProvider";
+import compileRuntime from "../../CompileRuntime";
 
 test('implode evaluate', () => {
     let el = new ExpressionLanguage(null, [new ArrayProvider()]);
@@ -10,7 +11,10 @@ test('implode evaluate', () => {
 test('implode compile', () => {
     let el = new ExpressionLanguage(null, [new ArrayProvider()]);
     let result = el.compile('implode(". ", ["check", "this", "out"])');
-    expect(result).toBe('implode(". ", ["check", "this", "out"])');
+    expect(result).toBe('__runtime.implode(". ", ["check", "this", "out"])');
+
+    let fn = new Function('__runtime', 'return ' + result + ';');
+    expect(fn(compileRuntime)).toBe("check. this. out");
 });
 
 test('count evaluate', () => {
@@ -25,10 +29,13 @@ test('count evaluate', () => {
 test('count compile', () => {
     let el = new ExpressionLanguage(null, [new ArrayProvider()]);
     let result = el.compile('count(["1", "2", "3"])');
-    expect(result).toBe('count(["1", "2", "3"])');
+    expect(result).toBe('__runtime.count(["1", "2", "3"])');
 
     let result2 = el.compile('count(["1", "2", "3"], "COUNT_RECURSIVE")');
-    expect(result2).toBe('count(["1", "2", "3"], "COUNT_RECURSIVE")');
+    expect(result2).toBe('__runtime.count(["1", "2", "3"], "COUNT_RECURSIVE")');
+
+    let fn = new Function('__runtime', 'return ' + result + ';');
+    expect(fn(compileRuntime)).toBe(3);
 });
 
 test('array_intersect evaluate', () => {
@@ -40,13 +47,19 @@ test('array_intersect evaluate', () => {
 test('array_intersect compile', () => {
     let el = new ExpressionLanguage(null, [new ArrayProvider()]);
     let result = el.compile('array_intersect(["1", "2", "3"], ["1", "2", "3"], ["2", "3"])');
-    expect(result).toBe('array_intersect(["1", "2", "3"], ["1", "2", "3"], ["2", "3"])');
+    expect(result).toBe('__runtime.array_intersect(["1", "2", "3"], ["1", "2", "3"], ["2", "3"])');
+
+    let fn = new Function('__runtime', 'return ' + result + ';');
+    expect(fn(compileRuntime)).toMatchObject(["2", "3"]);
 });
 
 test('array_intersect compile with a single array argument (no additional args)', () => {
     let el = new ExpressionLanguage(null, [new ArrayProvider()]);
     let result = el.compile('array_intersect(["1", "2", "3"])');
-    expect(result).toBe('array_intersect(["1", "2", "3"])');
+    expect(result).toBe('__runtime.array_intersect(["1", "2", "3"])');
+
+    let fn = new Function('__runtime', 'return ' + result + ';');
+    expect(fn(compileRuntime)).toMatchObject([]);
 });
 
 test('array_intersect evaluate with associative-object (non-array) arguments preserves keys', () => {

@@ -1,5 +1,6 @@
 import ExpressionLanguage from "../ExpressionLanguage";
 import ExpressionFunction from "../ExpressionFunction";
+import ELSyntaxError from "../SyntaxError";
 
 test('short circuit evaluate', () => {
     let obj = {
@@ -280,11 +281,23 @@ test('operator collisions evaluate and compile', () => {
     const el = new ExpressionLanguage();
     const expr = 'foo.not in [bar]';
     const compiled = el.compile(expr, ['foo', 'bar']);
-    // compiled code should be evaluable and return true
-    expect(compiled).toBe("includes(foo.not, [bar])");
+    // compiled code should be self-contained (no undefined `includes` global) and evaluable
+    expect(compiled).toBe('(function(__l, __r){return __r.indexOf(__l) >= 0;})(foo.not, [bar])');
 
     const resultEvaluated = el.evaluate(expr, {foo: {not: 'test'}, bar: 'test'});
     expect(resultEvaluated).toBe(true);
+
+    const fn = new Function('foo', 'bar', 'return ' + compiled + ';');
+    expect(fn({not: 'test'}, 'test')).toBe(true);
+});
+
+test('parse() without a names argument defaults to [] instead of throwing a TypeError', () => {
+    const el = new ExpressionLanguage();
+    // Regression: parse(expr) used to crash with "Cannot read properties of
+    // undefined (reading 'sort')" instead of surfacing a real SyntaxError,
+    // because `names` had no default (unlike evaluate()/compile()).
+    expect(() => el.parse('1 +')).toThrow(ELSyntaxError);
+    expect(el.parse('1 + 1').getNodes().evaluate({}, {})).toBe(2);
 });
 
 test('parse throws on incomplete expression (node.)', () => {

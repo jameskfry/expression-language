@@ -18,7 +18,7 @@ export const implodeFn = new ExpressionFunction(
     'implode',
     function compiler(glue, pieces) {
         //console.log("compile implode: ", pieces, glue, typeof pieces);
-        return `implode(${glue}, ${pieces})`;
+        return `__runtime.implode(${glue}, ${pieces})`;
     },
     function evaluator(values, glue, pieces) {
         return implode(glue, pieces);
@@ -32,7 +32,7 @@ export const countFn = new ExpressionFunction(
         if (mode) {
             remaining = `, ${mode}`;
         }
-        return `count(${mixedVar}${remaining})`;
+        return `__runtime.count(${mixedVar}${remaining})`;
     },
     function evaluator(values, mixedVar, mode) {
         return count(mixedVar, mode);
@@ -46,7 +46,7 @@ export const arrayIntersectFn = new ExpressionFunction(
         if (rest.length > 0) {
             remaining = ", " + rest.join(", ");
         }
-        return `array_intersect(${arr1}${remaining})`;
+        return `__runtime.array_intersect(${arr1}${remaining})`;
     },
     function evaluator(values) {
         let newArgs = [],

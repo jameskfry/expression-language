@@ -54,7 +54,7 @@ export default class ExpressionLanguage {
      * @param {int} flags
      * @returns {ParsedExpression} A ParsedExpression instance
      */
-    parse = (expression, names, flags=0) => {
+    parse = (expression, names = [], flags=0) => {
         if (expression instanceof ParsedExpression) {
             return expression;
         }

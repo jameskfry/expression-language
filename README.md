@@ -196,6 +196,21 @@ console.log(el.evaluate('count([1,2,3])')); // 3
 console.log(el.evaluate('isset(foo.bar)', { foo: { bar: 1 } })); // true
 ```
 
+##### Running compiled output that uses provider functions
+`compile()` (unlike `evaluate()`) returns a *string* of JavaScript source — it's up to you to run it, typically with `new Function()`. Core syntax (arithmetic, comparisons, `in`/`not in`, `..`, custom functions registered via `register()`/`addFunction()`) compiles to fully self-contained JavaScript with no extra setup. The bundled provider functions (`strtolower`, `count`, `date`, etc.) wrap PHP-compatible implementations that don't exist as JavaScript globals, so their compiled output calls `__runtime.<name>(...)` — pass `CompileRuntime` into scope under that name when executing it:
+
+```javascript
+import { ExpressionLanguage, StringProvider, CompileRuntime } from 'expression-language';
+
+const el = new ExpressionLanguage(null, [new StringProvider()]);
+const source = el.compile('strtoupper(a)', ['a']); // '__runtime.strtoupper(a)'
+
+const fn = new Function('__runtime', 'a', `return ${source};`);
+console.log(fn(CompileRuntime, 'hello')); // 'HELLO'
+```
+
+Note: `isset()` only supports `compile()` with an expression path (`isset(foo.bar)`, `isset(foo?.bar)`) — the string-literal calling style that `evaluate()` also accepts (`isset("foo['bar']")`) has no `values` object to resolve against at compile time, so `compile()` throws for that form rather than silently returning a wrong answer.
+
 - Creating your own provider:
 ```javascript
 import { ExpressionLanguage, ExpressionFunction } from 'expression-language';
@@ -296,6 +311,31 @@ try {
 
 Notes:
 - Passing null for the names parameter is deprecated; use IGNORE_UNKNOWN_VARIABLES instead when you want to allow unknown variables.
+
+#### Additional exports
+Beyond `ExpressionLanguage` and the providers, the package also exports the lower-level building blocks it's made of, for advanced use cases like catching parse errors by type or persisting a parsed expression:
+
+```javascript
+import { Expression, ParsedExpression, SyntaxError, CompileRuntime } from 'expression-language';
+
+const el = new ExpressionLanguage();
+
+try {
+  el.parse('1 +');
+} catch (e) {
+  if (e instanceof SyntaxError) {
+    console.log(e.message, e.cursor); // parse errors carry a cursor position (and proposals, when available)
+  }
+}
+
+// Persist a parsed expression's AST (e.g. across a network boundary) and rebuild it later
+const parsed = el.parse('a + b', ['a', 'b']);
+const json = JSON.stringify(parsed);
+const rebuilt = ParsedExpression.fromJSON(json);
+console.log(el.evaluate(rebuilt, { a: 1, b: 2 })); // 3
+```
+
+Also exported: `Node`, `Token`, `TokenStream`, `CacheItem`, `OPERATOR_LEFT`, `OPERATOR_RIGHT`.
 
 ## Continuous Integration and Deployment
 

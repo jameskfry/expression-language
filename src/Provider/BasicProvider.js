@@ -12,7 +12,21 @@ export default class BasicProvider extends AbstractProvider {
 export const issetFn = new ExpressionFunction(
     'isset',
     function compiler(variable) {
-        return `isset(${variable})`;
+        // evaluate() also accepts a string-literal PHP-style path, e.g.
+        // isset("foo['bar']"), and parses it at runtime against `values`.
+        // compile() has no `values` object to parse against, and naively
+        // wrapping the literal in a try/catch would just check that the
+        // string constant itself is non-null (always true) — a silent wrong
+        // answer. Fail loudly instead of guessing.
+        if (/^(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')$/.test(variable)) {
+            throw new Error('isset() does not support compile() when called with a string-literal path (e.g. isset("foo.bar")). Use an expression path instead (e.g. isset(foo.bar) or isset(foo?.bar)), or call evaluate() directly.');
+        }
+
+        // Self-contained: wraps the compiled argument expression (e.g. a
+        // property/array access chain that may throw on a missing base) in a
+        // try/catch so a non-existent path compiles to `false` instead of
+        // depending on an undefined global `isset()` helper or throwing.
+        return `(function(){try{var __v=(${variable});return __v!==null&&__v!==undefined;}catch(e){return false;}})()`;
     },
     function evaluator(values, variable) {
         // If the argument was already resolved (not a string path),

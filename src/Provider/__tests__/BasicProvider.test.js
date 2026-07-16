@@ -78,12 +78,6 @@ test('isset with null-safe resolved arguments', () => {
     expect(el.evaluate('isset(foo?.bar)', { foo: { bar: 'yep' } })).toBe(true);
 });
 
-test('isset compile', () => {
-    let el = new ExpressionLanguage(null, [new BasicProvider()]);
-    let result = el.compile('isset("foo.bar")', ['foo']);
-    expect(result).toBe('isset("foo.bar")');
-});
-
 test('isset is false for a compound path whose base variable is present but undefined', () => {
     let el = new ExpressionLanguage(null, [new BasicProvider()]);
     let result = el.evaluate("isset(\"foo['bar']\")", {foo: undefined});
@@ -95,4 +89,20 @@ test('isset with a bare (non-compound) path string checks the variable directly'
 
     expect(el.evaluate('isset("foo")', {foo: 'value'})).toBe(true);
     expect(el.evaluate('isset("foo")', {foo: undefined})).toBe(false);
+});
+
+test('isset compile with an expression path is self-contained', () => {
+    let el = new ExpressionLanguage(null, [new BasicProvider()]);
+    let compiled = el.compile('isset(foo.bar)', ['foo']);
+    expect(compiled).toBe('(function(){try{var __v=(foo.bar);return __v!==null&&__v!==undefined;}catch(e){return false;}})()');
+
+    let fn = new Function('foo', 'return ' + compiled + ';');
+    expect(fn({ bar: 1 })).toBe(true);
+    expect(fn({})).toBe(false);
+    expect(fn(null)).toBe(false);
+});
+
+test('isset compile rejects the string-literal path calling style', () => {
+    let el = new ExpressionLanguage(null, [new BasicProvider()]);
+    expect(() => el.compile("isset(\"foo['bar']\")", ['foo'])).toThrow(/does not support compile\(\)/);
 });
