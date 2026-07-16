@@ -37,7 +37,7 @@ declare class ExpressionLanguage {
    */
   parse(
     expression: Expression | string,
-    names: VariableName[],
+    names?: VariableName[],
     flags?: number
   ): ParsedExpression;
 
@@ -108,6 +108,7 @@ declare namespace ExpressionLanguage {
     Node,
     SyntaxError,
     CacheItem,
+    CompileRuntime,
     // Type exports
     VariableName,
     FunctionDefinition,
@@ -424,6 +425,24 @@ declare class Node {
   dumpString(value: string): string;
   isHash(value: object): boolean;
 }
+
+// Runtime helpers required in scope (as `__runtime`) when executing compile()
+// output for expressions that use StringProvider/ArrayProvider/DateProvider
+// functions. See CompileRuntime.js for details.
+declare const CompileRuntime: {
+  strtolower(str: string): string;
+  strtoupper(str: string): string;
+  explode(delimiter: string, str: string, limit?: number | null): string[];
+  strlen(str: string): number;
+  strstr(haystack: string, needle: string, before_needle?: boolean): string | false;
+  stristr(haystack: string, needle: string, before_needle?: boolean): string | false;
+  substr(str: string, start: number, length?: number): string;
+  implode(glue: string, pieces: unknown[]): string;
+  count(mixedVar: unknown, mode?: number): number;
+  array_intersect(...arrays: unknown[][]): unknown[];
+  date(format: string, timestamp?: number): string;
+  strtotime(str: string, now?: number): number | false;
+};
 
 declare class SyntaxError extends Error {
   constructor(

@@ -59,6 +59,27 @@ export default class BinaryNode extends Node {
                 .raw(".toString().toLowerCase())");
 
             return;
+        } else if ('in' === operator || 'not in' === operator) {
+            // Self-contained: an IIFE avoids depending on an undefined global
+            // `includes()` helper, and evaluates left/right in the same
+            // left-then-right order as evaluate().
+            let check = 'not in' === operator ? '=== -1' : '>= 0';
+            compiler.raw('(function(__l, __r){return __r.indexOf(__l) ' + check + ';})(')
+                .compile(this.nodes.left)
+                .raw(', ')
+                .compile(this.nodes.right)
+                .raw(')');
+
+            return;
+        } else if ('..' === operator) {
+            // Self-contained: avoids depending on an undefined global `range()` helper.
+            compiler.raw('(function(__s, __e){var __r=[];for(var __i=__s;__i<=__e;__i++){__r.push(__i);}return __r;})(')
+                .compile(this.nodes.left)
+                .raw(', ')
+                .compile(this.nodes.right)
+                .raw(')');
+
+            return;
         }
 
         if (BinaryNode.functions[operator] !== undefined) {

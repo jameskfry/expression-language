@@ -11,7 +11,7 @@ export default class DateProvider extends AbstractProvider {
                 if (timestamp) {
                     remaining = `, ${timestamp}`;
                 }
-                return `date(${format}${remaining})`;
+                return `__runtime.date(${format}${remaining})`;
             }, function(values, format, timestamp) {
                 return date(format, timestamp);
             }),
@@ -20,7 +20,7 @@ export default class DateProvider extends AbstractProvider {
                 if (now) {
                     remaining = `, ${now}`;
                 }
-                return `strtotime(${str}${remaining})`;
+                return `__runtime.strtotime(${str}${remaining})`;
             }, function (values, str, now)  {
                 return strtotime(str, now);
             })

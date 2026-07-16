@@ -12,22 +12,22 @@ export default class StringProvider extends AbstractProvider {
     getFunctions() {
         return [
             new ExpressionFunction('strtolower', (str) => {
-                return 'strtolower(' + str + ')';
+                return '__runtime.strtolower(' + str + ')';
             }, (args, str) => {
                 return strtolower(str);
             }),
             new ExpressionFunction('strtoupper', (str) => {
-                return 'strtoupper(' + str + ')';
+                return '__runtime.strtoupper(' + str + ')';
             }, (args, str) => {
                 return strtoupper(str);
             }),
             new ExpressionFunction('explode', (delimiter, string, limit='null') => {
-                return `explode(${delimiter}, ${string}, ${limit})`;
+                return `__runtime.explode(${delimiter}, ${string}, ${limit})`;
             }, (values, delimiter, string, limit=null) => {
                 return explode(delimiter, string, limit);
             }),
             new ExpressionFunction('strlen', function compiler(str) {
-                return `strlen(${str});`;
+                return `__runtime.strlen(${str})`;
             }, function evaluator(values, str) {
                 return strlen(str);
             }),
@@ -36,7 +36,7 @@ export default class StringProvider extends AbstractProvider {
                 if (before_needle) {
                     remaining = `, ${before_needle}`;
                 }
-                return `strstr(${haystack}, ${needle}${remaining});`;
+                return `__runtime.strstr(${haystack}, ${needle}${remaining})`;
             }, function evaluator(values, haystack, needle, before_needle) {
                 return strstr(haystack, needle, before_needle);
             }),
@@ -45,7 +45,7 @@ export default class StringProvider extends AbstractProvider {
                 if (before_needle) {
                     remaining = `, ${before_needle}`;
                 }
-                return `stristr(${haystack}, ${needle}${remaining});`;
+                return `__runtime.stristr(${haystack}, ${needle}${remaining})`;
             }, function evaluator(values, haystack, needle, before_needle) {
                 return stristr(haystack, needle, before_needle);
             }),
@@ -54,7 +54,7 @@ export default class StringProvider extends AbstractProvider {
                 if (length) {
                     remaining = `, ${length}`;
                 }
-                return `substr(${str}, ${start}${remaining});`;
+                return `__runtime.substr(${str}, ${start}${remaining})`;
             }, function evaluator(values, str, start, length) {
                 return substr(str, start, length);
             })
