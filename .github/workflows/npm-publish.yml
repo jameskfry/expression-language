@@ -1,9 +1,8 @@
 name: Publish Package to npm
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [published]
 
 permissions:
   id-token: write
@@ -15,8 +14,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -27,45 +24,69 @@ jobs:
       - name: Upgrade NPM to latest
         run: npm install -g npm@latest
 
+      - name: Set package version from release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${TAG#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Release tag '$TAG' is not a valid semver version (expected e.g. v1.2.3 or v1.2.3-beta.1)"
+            exit 1
+          fi
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
       - name: Install dependencies
         run: npm ci
 
       - name: Run tests
         run: npm test
 
-      - name: Check version change
-        id: version-check
-        uses: ./.github/actions/version-check
-        with:
-          package-name: 'expression-language'
-
+      # Pre-releases are published under the "next" dist-tag so they don't become "latest".
+      # `npm publish` runs prepublishOnly, which builds the dist files.
       - name: Build and publish package
-        if: steps.version-check.outputs.changed == 'true'
-        run: npm publish
-
-      - name: Generate changelog
-        id: changelog
-        if: steps.version-check.outputs.changed == 'true'
-        uses: metcalfc/changelog-generator@v4.6.2
-        with:
-          myToken: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create GitHub Release
-        if: steps.version-check.outputs.changed == 'true'
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version-check.outputs['current-version'] }}
-          name: Release v${{ steps.version-check.outputs['current-version'] }}
-          body: |
-            ## Changes in this Release
-
-            ${{ steps.changelog.outputs.changelog }}
-          files: |
-            dist/expression-language.js
-            dist/expression-language.min.js
-            dist/index.d.ts
-          draft: false
-          prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TAG: ${{ github.event.release.prerelease && 'next' || 'latest' }}
+        run: npm publish --tag "$NPM_TAG"
+
+      - name: Attach distribution files to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            dist/expression-language.js \
+            dist/expression-language.min.js \
+            dist/index.d.ts \
+            --clobber
+
+  # Keep package.json on main in sync with what was just published.
+  sync-version:
+    needs: publish-npm
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Commit released version to main
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${TAG#v}"
+          CURRENT="$(node -p "require('./package.json').version")"
+          if [ "$CURRENT" = "$VERSION" ]; then
+            echo "main is already at $VERSION"
+            exit 0
+          fi
+          # Don't move main backwards when releasing from an older line (e.g. a 1.x patch).
+          if [ "$(printf '%s\n%s\n' "$CURRENT" "$VERSION" | sort -V | tail -n1)" = "$CURRENT" ]; then
+            echo "main ($CURRENT) is already ahead of $VERSION; leaving it alone"
+            exit 0
+          fi
+          npm version "$VERSION" --no-git-tag-version
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "Release $VERSION"
+          git push origin main
