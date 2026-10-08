@@ -20,7 +20,8 @@
  *
  * Usage:
  *
- *   node scripts/portability-audit.cjs [options] [file ...]
+ *   npx expression-language-portability [options] [file ...]      (once the package is installed)
+ *   node bin/portability-audit.cjs [options] [file ...]            (from a checkout of the repository)
  *
  *   file                    a JSON file (an array of strings, or of {expr: "..."}), or a text file with one expression per line
  *                           (blank lines and lines starting with # are ignored). "-" reads the standard input.
@@ -35,8 +36,8 @@
  *   --php-symfony <dir>     also evaluate the samples with Symfony's own PHP and compare (needs php, and a checkout of
  *                           symfony/expression-language; see the README, "Contributing")
  *   --php <binary>          the php to use (default: php)
- *   --lib <path>            the expression-language build to audit (default: ../lib, run `npm run build` first); point it to
- *                           node_modules/expression-language to audit the installed package
+ *   --lib <path>            the expression-language build to audit (default: the one this script comes with: the installed package, or
+ *                           lib/ of a checkout, which `npm run build` makes)
  *   --help
  *
  * Exits with 0, 1 (see --fail-on, or a disagreement with PHP) or 2 (wrong usage).

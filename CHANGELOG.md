@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- `scripts/portability-audit.cjs` (`npm run portability`) finds the expressions of a code base and tells which ones do not mean the same thing in PHP and in JavaScript, and
+- The package publishes an allowlist of files (`files` in package.json, replacing `.npmignore`): `lib`, `dist`, `bin`, the changelog and upgrade guide. The compiled tests,
+  CI workflows, build configuration and examples are no longer in the tarball (286 KB instead of 602 KB), and a working copy's coverage report or editor settings can no longer end up in it.
+  `npm run test:package` checks the tarball and the command it installs.
+- The **`expression-language-portability`** command (`npx expression-language-portability`, `bin/portability-audit.cjs`) finds the expressions of a code base and tells which ones do not mean the same thing in PHP and in JavaScript, and
   can compare the answers of this library with Symfony's own PHP for them (see the README).
 
 ## 3.0.0

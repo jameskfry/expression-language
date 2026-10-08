@@ -60,7 +60,7 @@ jobs:
 
   build:
     # The sources are tested above; this runs what is published: the Babel build (lib/) and the minified browser bundle (dist/).
-    name: Build and smoke-test the bundles
+    name: Build, smoke-test the bundles and the package
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -76,6 +76,9 @@ jobs:
       - run: npm run build:all
 
       - run: npm run test:build
+
+      # npm pack, then install the tarball into a clean project and run what it ships (the entry point, the bundle, the command)
+      - run: npm run test:package
 
   types:
     name: TypeScript definitions
