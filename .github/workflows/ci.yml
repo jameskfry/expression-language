@@ -29,9 +29,9 @@ jobs:
       matrix:
         node: [20, 22, 24]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -47,9 +47,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -64,9 +64,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -85,9 +85,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -103,9 +103,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -138,20 +138,45 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - run: npm audit --omit=dev --audit-level=high
 
+  release:
+    # The release workflow (npm-publish.yml) only runs when a release is published, so a change to the actions or to npm it relies on
+    # would only show up then. This runs its setup (registry-url without a token, the latest npm, the version taken from a tag, the build
+    # of prepublishOnly) up to the point of publishing, which is a dry run: no credentials, nothing is sent.
+    name: Release dry run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org/'
+          package-manager-cache: false
+
+      - run: npm install -g npm@latest
+
+      - name: Set the package version, as the release does from the tag
+        run: npm version 3.0.0-ci.0 --no-git-tag-version
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: npm publish --dry-run --tag ci
+
   ci:
     # The one check to require in the branch protection rules: the names of the matrix jobs above can change.
     name: CI
     if: ${{ always() }}
-    needs: [test, coverage, build, types, php, audit]
+    needs: [test, coverage, build, types, php, audit, release]
     runs-on: ubuntu-latest
     steps:
       - name: Every job succeeded
