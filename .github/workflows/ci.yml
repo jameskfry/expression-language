@@ -95,8 +95,8 @@ jobs:
 
   php:
     # The PHP that dumpCompiled() generates has to be accepted by Symfony's own CompiledExpressionLanguage, and behave like the file
-    # Symfony dumps itself. Needs the PHP of the runner and a checkout of the component (the Lexer, Parser and Nodes: no Composer).
-    name: PHP dump against Symfony's loader
+    # Symfony dumps itself; and the portability audit's comparison with Symfony's PHP has to agree. Needs the PHP of the runner and a checkout of the component (the Lexer, Parser and Nodes: no Composer).
+    name: PHP against Symfony's own code
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -124,7 +124,7 @@ jobs:
           php --version
 
       - name: Evaluate the dumped PHP with Symfony's loader
-        run: npm test -- CompiledExpressionLanguage
+        run: npm test -- 'CompiledExpressionLanguage|PortabilityAudit'
         env:
           SYMFONY_EXPRESSION_LANGUAGE_PATH: ${{ runner.temp }}/symfony-expression-language
 

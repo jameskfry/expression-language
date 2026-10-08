@@ -17,7 +17,8 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:types": "tsc --noEmit --strict --target es2020 --moduleResolution node --esModuleInterop --skipLibCheck types/test-types.ts",
-    "test:build": "node scripts/smoke-build.cjs lib/index.js dist/expression-language.min.js"
+    "test:build": "node scripts/smoke-build.cjs lib/index.js dist/expression-language.min.js",
+    "portability": "node scripts/portability-audit.cjs"
   },
   "jest": {
     "testPathIgnorePatterns": [
