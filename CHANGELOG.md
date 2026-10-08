@@ -1,10 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- `scripts/portability-audit.cjs` (`npm run portability`) finds the expressions of a code base and tells which ones do not mean the same thing in PHP and in JavaScript, and
-  can compare the answers of this library with Symfony's own PHP for them (see the README).
-
 ## 3.0.0
 
 This release brings the library back in line with Symfony's ExpressionLanguage, closes a hole that let expressions read
@@ -43,6 +38,8 @@ Everything below is explained, with before/after and how to keep the old behavio
   backslash. **Backslashes meant for a regex must be doubled** (`"/^\\d+$/"`).
 - **`matches`**: any delimiter, modifiers `i m s u` only (`g` is rejected), `SyntaxError` for an invalid pattern,
   `null` matches as an empty string.
+- **`..` (range)** counts down (`3..1` is `[3, 2, 1]`), follows PHP's `range()` for numeric strings and characters (`"1".."3"` is `[1, 2, 3]`, `"a".."e"` are the letters), refuses an array,
+  and a range of more than 10 million items is a `ValueError` (it used to try to build it). The subject of `matches` cannot be an array (a `TypeError`, as in Symfony).
 - **`in` / `not in`** throw when the right operand is not an array or hash (`"a" in "abc"` used to work).
 - **`min()` / `max()`** accept an array like PHP's and throw like PHP's on empty or non-array input
   (`min([3, 1])` was `NaN`).
@@ -62,6 +59,8 @@ Everything below is explained, with before/after and how to keep the old behavio
 
 ### ✨ New
 
+- **`expression-language-portability`**, a command of the package (`npx expression-language-portability`): finds the expressions of a code base, tells which ones do not mean the
+  same thing in PHP and in JavaScript, and can compare this library's answers with Symfony's own PHP for them. `--fail-on` makes it usable in CI. See the README.
 - **`CompiledExpressionLanguage`**: compile expressions ahead of time and evaluate them without parsing. `dumpCompiled()`
   generates **JavaScript** (default; as an ES module, a CommonJS module or a bare expression) **or PHP** (`{ target: 'php' }`),
   in the format Symfony's own `CompiledExpressionLanguage` loads. See the README.
@@ -89,6 +88,11 @@ Everything below is explained, with before/after and how to keep the old behavio
   ignored the flags).
 - An unterminated string followed by another quoted string was mis-lexed.
 - "Did you mean ...?" was never offered for unknown function names.
+
+### 📦 Package contents
+
+The package now publishes an allowlist of files (`files` in `package.json`, replacing `.npmignore`): `lib`, `dist`, `bin`, this changelog and the upgrade guide. The compiled tests,
+CI workflows, build configuration and examples are no longer in the tarball (286 KB instead of 602 KB). Nothing under `lib/` or `dist/` moved, so imports of the package are unaffected.
 
 ### Still different from Symfony
 

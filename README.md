@@ -555,14 +555,16 @@ some 1,700 ns uncompiled).
 ## Auditing your expressions for portability
 
 If the same expressions run on a server and in a browser, you want to know which of them depend on the rules of a language.
-`scripts/portability-audit.cjs` tells you, from the expressions alone: it needs no data.
+The package installs a command that tells you, from the expressions alone: it needs no data.
 
 ```bash
-npm run build                                       # the script audits the build in lib/ (or --lib <path>)
-npm run portability -- --extract ./src ./config     # find the expressions in your source code
-npm run portability -- rules.json                   # ...or give a list: a JSON array of strings, or one expression per line
-npm run portability -- rules.txt --fail-on ordinary # exit with 1 when an expression is not portable, to use it in CI
+npm install --save-dev expression-language
+npx expression-language-portability --extract ./src ./config      # find the expressions in your source code
+npx expression-language-portability rules.json                    # ...or give a list: a JSON array of strings, or one expression per line
+npx expression-language-portability rules.txt --fail-on ordinary  # exit with 1 when an expression is not portable, to use it in CI
 ```
+
+It audits the version of the package it comes with. From a checkout of this repository, run `npm run build` and then `npm run portability -- <the same arguments>`.
 
 `--extract` reads PHP attributes and annotations (`#[IsGranted(expression: ...)]`, `@Security(...)`, `new Expression(...)`, `Assert\Expression`),
 YAML and XML configuration (`security:`, `condition:`, `guard:`, `@=...`) and `evaluate()` / `compile()` calls in JavaScript.
@@ -623,6 +625,7 @@ Run the tests with `npm test`. The pull request checks ([ci.yml](.github/workflo
 | `npm run test:coverage` | the same tests with the sources instrumented (code that `compile()` serialises with `Function#toString()` must stay out of it: see the `istanbul ignore` hints) |
 | `npm run test:types` | the TypeScript definitions (`types/test-types.ts`, `tsc --strict`) |
 | `npm run build:all && npm run test:build` | the Babel build and the minified browser bundle, which are what gets published |
+| `npm run test:package` | `npm pack`, then the tarball installed into a clean project: what is in it, the entry point, the bundle, the `expression-language-portability` command (needs the network) |
 
 The `CI` workflow also audits the runtime dependencies (`npm audit --omit=dev`) and evaluates the PHP that `dumpCompiled()` generates with Symfony's own loader, against a Symfony commit pinned in `SYMFONY_EXPRESSION_LANGUAGE_SHA`: move it on purpose, together with the fixtures.
 

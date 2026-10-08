@@ -3,7 +3,7 @@ import os from "os";
 import path from "path";
 import * as library from "../index";
 
-const audit = require("../../scripts/portability-audit.cjs");
+const audit = require("../../bin/portability-audit.cjs");
 
 // the library under audit is the sources: no build needed
 const auditor = (options = {}) => audit.createAuditor(library, {samples: 120, ...options});
@@ -228,6 +228,34 @@ describe('the report', () => {
         expect(text).toContain('9/10 identical, 1 different');
         expect(text).toContain('this library: {"value":true}');
         expect(text).toContain('PHP         : {"value":false}');
+    });
+});
+
+describe('the command that the package installs', () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
+    const root = path.join(__dirname, '../..');
+
+    test('the bin entry points to the script', () => {
+        expect(manifest.bin).toEqual({'expression-language-portability': 'bin/portability-audit.cjs'});
+        expect(fs.existsSync(path.join(root, manifest.bin['expression-language-portability']))).toBe(true);
+    });
+
+    test('the script is a node program, and is executable in the repository', () => {
+        const file = path.join(root, 'bin/portability-audit.cjs');
+
+        expect(fs.readFileSync(file, 'utf8').startsWith('#!/usr/bin/env node\n')).toBe(true);
+        expect(fs.statSync(file).mode & 0o111).not.toBe(0);
+    });
+
+    test('the PHP helper it runs sits next to it, and the directory is published', () => {
+        expect(fs.existsSync(path.join(root, 'bin/portability-audit.php'))).toBe(true);
+        // `files` is an allowlist: what it does not name is not published
+        expect(manifest.files).toEqual(expect.arrayContaining(['bin', 'lib', 'dist']));
+        expect(fs.existsSync(path.join(root, '.npmignore'))).toBe(false);
+    });
+
+    test('the default library is the build next to the script, so the installed package audits itself', () => {
+        expect(audit.parseArguments([]).lib).toBe(path.join(root, 'lib', 'index.js'));
     });
 });
 

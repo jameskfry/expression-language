@@ -4,6 +4,17 @@
   "description": "Javascript implementation of symfony/expression-language",
   "main": "lib/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "expression-language-portability": "bin/portability-audit.cjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "lib",
+    "!lib/**/__tests__",
+    "CHANGELOG.md",
+    "UPGRADE-*.md"
+  ],
   "browser": "dist/expression-language.min.js",
   "repository": {
     "type": "git",
@@ -18,7 +29,8 @@
     "test:coverage": "jest --coverage",
     "test:types": "tsc --noEmit --strict --target es2020 --moduleResolution node --esModuleInterop --skipLibCheck types/test-types.ts",
     "test:build": "node scripts/smoke-build.cjs lib/index.js dist/expression-language.min.js",
-    "portability": "node scripts/portability-audit.cjs"
+    "test:package": "node scripts/check-package.cjs",
+    "portability": "node bin/portability-audit.cjs"
   },
   "jest": {
     "testPathIgnorePatterns": [
