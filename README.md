@@ -568,7 +568,16 @@ JavaScript and PHP are different languages, so a few things cannot be identical 
 
 ## Contributing
 
-Run the tests with `npm test`.
+Run the tests with `npm test`. The pull request checks ([ci.yml](.github/workflows/ci.yml)) run, and you can run locally:
+
+| Command | Checks |
+|---|---|
+| `npm test` | the unit tests, on the sources |
+| `npm run test:coverage` | the same tests with the sources instrumented (code that `compile()` serialises with `Function#toString()` must stay out of it: see the `istanbul ignore` hints) |
+| `npm run test:types` | the TypeScript definitions (`types/test-types.ts`, `tsc --strict`) |
+| `npm run build:all && npm run test:build` | the Babel build and the minified browser bundle, which are what gets published |
+
+The `CI` workflow also audits the runtime dependencies (`npm audit --omit=dev`) and evaluates the PHP that `dumpCompiled()` generates with Symfony's own loader, against a Symfony commit pinned in `SYMFONY_EXPRESSION_LANGUAGE_SHA`: move it on purpose, together with the fixtures.
 
 `src/__tests__/SymfonyParity.test.js` replays `src/__tests__/fixtures/symfony-corpus.json` and compares it with
 `src/__tests__/fixtures/symfony-parity.json`, which holds what Symfony's own code answers. After adding expressions to
