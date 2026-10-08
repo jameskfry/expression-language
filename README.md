@@ -337,31 +337,16 @@ console.log(el.evaluate(rebuilt, { a: 1, b: 2 })); // 3
 
 Also exported: `Node`, `Token`, `TokenStream`, `CacheItem`, `OPERATOR_LEFT`, `OPERATOR_RIGHT`.
 
-## Continuous Integration and Deployment
+## Releasing
 
-This package uses GitHub Actions for automated workflows:
+Releases are cut from GitHub, and `package.json` is never edited by hand:
 
-1. **NPM Publishing**: Automatically publishes to npm when the package version changes
-2. **GitHub Releases**: Automatically creates GitHub releases with changelogs and distribution files
+1. Merge your changes into `main` as usual. Merging does **not** publish anything.
+2. Create a new GitHub release with a tag like `v2.8.0` (use the "Generate release notes" button for the changelog).
+3. Publishing the release triggers the [npm-publish workflow](.github/workflows/npm-publish.yml), which sets the package version from the tag, runs the tests, publishes to npm, attaches the `dist` files to the release, and commits the new version back to `main`.
+
+Marking the release as a pre-release (e.g. tag `v3.0.0-beta.1`) publishes it under the `next` npm dist-tag instead of `latest`, and `main` is left untouched.
 
 ### For Maintainers
 
-If you're maintaining this package, you'll need to set up the following:
-
-#### NPM Publishing
-Set up trusted publisher in npmjs.org by following the instructions [here](https://docs.npmjs.com/trusted-publishers).
-
-#### GitHub Releases
-
-The GitHub release workflow automatically:
-
-- Checks if the package version has changed
-- Builds the project to generate distribution files
-- Creates a GitHub release with the new version tag
-- Generates a changelog based on commit messages
-- Attaches the distribution files to the release
-
-No additional setup is required for GitHub releases as it uses the default `GITHUB_TOKEN`.
-
-Once set up, any push to the main branch will trigger these workflows when the package version changes.
-
+Publishing uses npm [trusted publishing](https://docs.npmjs.com/trusted-publishers). In the package settings on npmjs.org, configure the trusted publisher with the workflow filename `npm-publish.yml`. No other secrets are needed.
