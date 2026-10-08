@@ -5,6 +5,9 @@ export default class NullCoalesceNode extends Node {
     constructor(expr1, expr2) {
         super({expr1: expr1, expr2: expr2});
         this.name = 'NullCoalesceNode';
+
+        // Every access of the chain on the left must tolerate a missing link, both when evaluated and when compiled
+        this._addNullCoalesceAttributeToGetAttrNodes(expr1);
     }
 
     compile = (compiler) => {
@@ -16,10 +19,6 @@ export default class NullCoalesceNode extends Node {
     }
 
     evaluate = (functions, values) => {
-        if (this.nodes.expr1 instanceof GetAttrNode) {
-            this._addNullCoalesceAttributeToGetAttrNodes(this.nodes.expr1);
-        }
-
         return this.nodes.expr1.evaluate(functions, values) ?? this.nodes.expr2.evaluate(functions, values);
     }
 

@@ -23,7 +23,7 @@ export const implodeFn = new ExpressionFunction(
     function evaluator(values, glue, pieces) {
         return implode(glue, pieces);
     }
-);
+).withPhpFunction();
 
 export const countFn = new ExpressionFunction(
     'count',
@@ -37,7 +37,7 @@ export const countFn = new ExpressionFunction(
     function evaluator(values, mixedVar, mode) {
         return count(mixedVar, mode);
     }
-);
+).withPhpFunction();
 
 export const arrayIntersectFn = new ExpressionFunction(
     'array_intersect',
@@ -64,4 +64,4 @@ export const arrayIntersectFn = new ExpressionFunction(
         }
         return res;
     }
-);
+).withPhpFunction();

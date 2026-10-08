@@ -7,7 +7,8 @@ export default class NullCoalescedNameNode extends Node {
     }
 
     compile = (compiler) => {
-        compiler.raw(this.attributes.name + " ?? null");
+        // the name may not be declared at all when the compiled code runs
+        compiler.raw(`(typeof ${this.attributes.name} === "undefined" ? null : ${this.attributes.name})`);
     }
 
     evaluate = (functions, values) => {

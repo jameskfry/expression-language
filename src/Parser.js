@@ -1,4 +1,5 @@
 import SyntaxError from "./SyntaxError";
+import LogicException from "./LogicException";
 import {Token} from "./TokenStream"
 import Node from "./Node/Node";
 import BinaryNode from "./Node/BinaryNode";
@@ -18,6 +19,35 @@ export const OPERATOR_LEFT = 1;
 export const OPERATOR_RIGHT = 2;
 export const IGNORE_UNKNOWN_VARIABLES = 1;
 export const IGNORE_UNKNOWN_FUNCTIONS = 2;
+/**
+ * Makes `contains`, `starts with` and `ends with` ignore case. They are case-sensitive by default, like Symfony's.
+ */
+export const CASE_INSENSITIVE_STRING_OPERATORS = 4;
+
+/**
+ * Evaluate with JavaScript's own rules for `+`, `==`, `<`, truthiness... instead of Symfony's (PHP's).
+ */
+export const SEMANTICS_JS = 8;
+/**
+ * Evaluate with both sets of rules, and fail (PortabilityError) when they would not agree.
+ */
+export const SEMANTICS_PORTABLE = 16;
+export const SEMANTICS_MASK = SEMANTICS_JS | SEMANTICS_PORTABLE;
+
+/**
+ * @param {number} flags
+ * @returns {'symfony'|'js'|'portable'}
+ */
+export function semanticsOf(flags) {
+    if ((flags & SEMANTICS_MASK) === SEMANTICS_MASK) {
+        throw new LogicException('SEMANTICS_JS and SEMANTICS_PORTABLE exclude each other.');
+    }
+
+    return (flags & SEMANTICS_JS) ? 'js' : ((flags & SEMANTICS_PORTABLE) ? 'portable' : 'symfony');
+}
+
+const CASE_AWARE_OPERATORS = ['contains', 'starts with', 'ends with'];
+const MAX_NESTING_LEVEL = 256;
 
 export default class Parser {
     functions = {};
@@ -70,8 +100,10 @@ export default class Parser {
         this.names = null;
         this.objectMatches = {};
         this.cachedNames = null;
-        this.nestedExecutions = 0;
+        this.nestingLevel = 0;
         this.flags = 0;
+        this.semantics = 'symfony';
+        this.variables = Object.create(null);
     }
 
     parse = (tokenStream, names=[], flags=0) => {
@@ -79,14 +111,16 @@ export default class Parser {
         this.names = names;
         this.objectMatches = {};
         this.cachedNames = null;
-        this.nestedExecutions = 0;
+        this.nestingLevel = 0;
         this.flags = flags;
+        this.semantics = semanticsOf(flags);
+        this.variables = Object.create(null);
         //console.log("tokens: ", tokenStream.toString());
 
         let node = this.parseExpression();
 
         if (!this.tokenStream.isEOF()) {
-            throw new SyntaxError(`Unexpected token "${this.tokenStream.current.type}" of value "${this.tokenStream.current.value}"`, this.tokenStream.current.cursor, this.tokenStream.expression);
+            throw new SyntaxError(`Unexpected token "${this.tokenStream.current.type}" of value "${this.tokenStream.current.value ?? ''}"`, this.tokenStream.current.cursor, this.tokenStream.expression);
         }
 
         return node;
@@ -104,34 +138,55 @@ export default class Parser {
     }
 
     parseExpression = (precedence = 0) => {
-        let expr = this.getPrimary();
-        let token = this.tokenStream.current;
-        this.nestedExecutions++;
-        if (this.nestedExecutions > 1000) {
-            throw new Error("Too many executions on '" + token.toString() + "' of '" + this.tokenStream.toString() + "'");
+        const nestingLevel = this.nestingLevel;
+        this.enterNestingLevel();
+
+        try {
+            let expr = this.getPrimary();
+            let token = this.tokenStream.current;
+
+            while (token.test(Token.OPERATOR_TYPE)
+                && this.binaryOperators[token.value] !== undefined
+                && this.binaryOperators[token.value] !== null
+                && this.binaryOperators[token.value].precedence >= precedence) {
+                this.enterNestingLevel();
+
+                let op = this.binaryOperators[token.value];
+                this.tokenStream.next();
+
+                let expr1 = this.parseExpression(OPERATOR_LEFT === op.associativity ? op.precedence + 1 : op.precedence);
+                expr = new BinaryNode(
+                    token.value,
+                    expr,
+                    expr1,
+                    !!(this.flags & CASE_INSENSITIVE_STRING_OPERATORS) && CASE_AWARE_OPERATORS.indexOf(token.value) >= 0,
+                    this.semantics
+                );
+
+                token = this.tokenStream.current;
+            }
+
+            if (0 === precedence) {
+                return this.parseConditionalExpression(expr);
+            }
+
+            return expr;
+        } finally {
+            this.nestingLevel = nestingLevel;
         }
+    };
 
-        //console.log("Parsing: ", token);
-
-        while (token.test(Token.OPERATOR_TYPE)
-            && this.binaryOperators[token.value] !== undefined
-            && this.binaryOperators[token.value] !== null
-            && this.binaryOperators[token.value].precedence >= precedence) {
-
-            let op = this.binaryOperators[token.value];
-            this.tokenStream.next();
-
-            let expr1 = this.parseExpression(OPERATOR_LEFT === op.associativity ? op.precedence + 1 : op.precedence);
-            expr = new BinaryNode(token.value, expr, expr1);
-
-            token = this.tokenStream.current;
+    /**
+     * Accounts for one more node on the branch being built. The nesting level bounds the depth of the node tree.
+     */
+    enterNestingLevel = () => {
+        if (MAX_NESTING_LEVEL < ++this.nestingLevel) {
+            throw new SyntaxError(
+                `Expression is nested too deeply, the maximum nesting level is ${MAX_NESTING_LEVEL}`,
+                this.tokenStream.current.cursor,
+                this.tokenStream.expression
+            );
         }
-
-        if (0 === precedence) {
-            return this.parseConditionalExpression(expr);
-        }
-
-        return expr;
     };
 
     getPrimary = () => {
@@ -143,7 +198,7 @@ export default class Parser {
             let operator = this.unaryOperators[token.value];
             this.tokenStream.next();
             let expr = this.parseExpression(operator.precedence);
-            return this.parsePostfixExpression(new UnaryNode(token.value, expr));
+            return this.parsePostfixExpression(new UnaryNode(token.value, expr, this.semantics));
         }
 
         if (token.test(Token.PUNCTUATION_TYPE, "(")) {
@@ -160,38 +215,26 @@ export default class Parser {
 
     parseConditionalExpression(expr) {
         while (this.tokenStream.current.test(Token.PUNCTUATION_TYPE, "??")) {
+            this.enterNestingLevel();
             this.tokenStream.next();
             let expr2 = this.parseExpression();
             expr = new NullCoalesceNode(expr, expr2);
         }
 
         while(this.tokenStream.current.test(Token.PUNCTUATION_TYPE, "?")) {
+            this.enterNestingLevel();
             this.tokenStream.next();
             let expr2, expr3;
             if (!this.tokenStream.current.test(Token.PUNCTUATION_TYPE, ":")) {
-                // Parse the 'then' part (or potential rhs for shorthand)
                 expr2 = this.parseExpression();
                 if (this.tokenStream.current.test(Token.PUNCTUATION_TYPE, ":")) {
-                    // Standard ternary: condition ? then : else
+                    // condition ? then : else
                     this.tokenStream.next();
                     expr3 = this.parseExpression();
                 }
                 else {
-                    // No ':' present — support shorthand forms:
-                    // 1) condition ? 'yes'  => condition ? 'yes' : ''
-                    // 2) a ? b               => a ?: b  (i.e., a ? a : b)
-                    if (expr2 instanceof ConstantNode && typeof expr2.attributes?.value === 'string') {
-                        // Shorthand: condition ? 'literal'  => else is empty string
-                        expr3 = new ConstantNode('');
-                    } else if (expr2 instanceof ConditionalNode) {
-                        // Right-associative flattening: a ? (b ? c : d)  => a ? b : d when no ':' after first '?'
-                        expr3 = expr2.nodes.expr3;
-                        expr2 = expr2.nodes.expr2;
-                    } else {
-                        // Elvis-like shorthand: a ? b  => a ? a : b
-                        expr3 = expr2;
-                        expr2 = expr;
-                    }
+                    // condition ? then  =>  condition ? then : null
+                    expr3 = new ConstantNode(null);
                 }
             }
             else {
@@ -201,7 +244,7 @@ export default class Parser {
                 expr3 = this.parseExpression();
             }
 
-            expr = new ConditionalNode(expr, expr2, expr3);
+            expr = new ConditionalNode(expr, expr2, expr3, this.semantics);
         }
 
         return expr;
@@ -230,13 +273,17 @@ export default class Parser {
                     default:
                         if ("(" === this.tokenStream.current.value) {
                             if (undefined === this.functions[token.value] && !(this.flags & IGNORE_UNKNOWN_FUNCTIONS)) {
-                                throw new SyntaxError(`The function "${token.value}" does not exist`, token.cursor, this.tokenStream.expression, token.values, Object.keys(this.functions));
+                                throw new SyntaxError(`The function "${token.value}" does not exist`, token.cursor, this.tokenStream.expression, token.value, Object.keys(this.functions));
                             }
 
                             node = new FunctionNode(token.value, this.parseArguments());
                         }
                         else {
                             let name = null;
+                            // remember where each variable is first read without a "??" guarding it (null: only ever guarded)
+                            if (this.variables[token.value] === undefined || this.variables[token.value] === null) {
+                                this.variables[token.value] = this.tokenStream.current.test(Token.PUNCTUATION_TYPE, "??") ? null : token.cursor;
+                            }
                             if (!(this.flags & IGNORE_UNKNOWN_VARIABLES)) {
                                 if (!this.hasVariable(token.value)) {
                                     if (this.tokenStream.current.test(Token.PUNCTUATION_TYPE, "??")) {
@@ -264,7 +311,7 @@ export default class Parser {
             case Token.STRING_TYPE:
                 this.tokenStream.next();
 
-                return new ConstantNode(token.value);
+                return new ConstantNode(token.value, false, false, token.isFloat === true);
             default:
                 if(token.test(Token.PUNCTUATION_TYPE, "[")) {
                     node = this.parseArrayExpression();
@@ -273,12 +320,24 @@ export default class Parser {
                     node = this.parseHashExpression();
                 }
                 else {
-                    throw new SyntaxError(`Unexpected token "${token.type}" of value "${token.value}"`, token.cursor, this.tokenStream.expression);
+                    throw new SyntaxError(`Unexpected token "${token.type}" of value "${token.value ?? ''}"`, token.cursor, this.tokenStream.expression);
                 }
         }
 
         return this.parsePostfixExpression(node);
     }
+
+    /**
+     * Returns the variables read by the last parsed expression.
+     *
+     * Each name maps to the position where the expression first reads it without "??",
+     * or to null when "??" guards every read.
+     *
+     * @returns {Object<string, number|null>}
+     */
+    getVariables = () => {
+        return this.variables;
+    };
 
     hasVariable = (name) => {
         return this.getNames().indexOf(name) >= 0;
@@ -371,7 +430,7 @@ export default class Parser {
             else {
                 let current = this.tokenStream.current;
 
-                throw new SyntaxError(`A hash key must be a quoted string, a number, a name, or an expression enclosed in parentheses (unexpected token "${current.type}" of value "${current.value}"`, current.cursor, this.tokenStream.expression);
+                throw new SyntaxError(`A hash key must be a quoted string, a number, a name, or an expression enclosed in parentheses (unexpected token "${current.type}" of value "${current.value ?? ''}"`, current.cursor, this.tokenStream.expression);
             }
 
             this.tokenStream.expect(Token.PUNCTUATION_TYPE, ":", "A hash key must be followed by a colon (:)");
@@ -388,9 +447,26 @@ export default class Parser {
         let token = this.tokenStream.current;
         while (Token.PUNCTUATION_TYPE === token.type) {
             if ('.' === token.value || '?.' === token.value) {
+                this.enterNestingLevel();
                 const isNullSafe = "?." === token.value;
                 this.tokenStream.next();
                 token = this.tokenStream.current;
+
+                if (token.test(Token.PUNCTUATION_TYPE, '[')) {
+                    // null-safe array access: foo?.[0]
+                    if (!isNullSafe) {
+                        throw new SyntaxError('Expected name', token.cursor, this.tokenStream.expression);
+                    }
+
+                    this.tokenStream.next();
+                    let arg = this.parseExpression();
+                    this.tokenStream.expect(Token.PUNCTUATION_TYPE, "]");
+
+                    node = new GetAttrNode(node, arg, new ArgumentsNode(), GetAttrNode.ARRAY_CALL, true, this.semantics);
+                    token = this.tokenStream.current;
+                    continue;
+                }
+
                 this.tokenStream.next();
 
                 if (Token.NAME_TYPE !== token.type &&
@@ -424,14 +500,15 @@ export default class Parser {
                     type = GetAttrNode.PROPERTY_CALL;
                 }
 
-                node = new GetAttrNode(node, arg, _arguments, type);
+                node = new GetAttrNode(node, arg, _arguments, type, false, this.semantics);
             }
             else if ('[' === token.value) {
+                this.enterNestingLevel();
                 this.tokenStream.next();
                 let arg = this.parseExpression();
                 this.tokenStream.expect(Token.PUNCTUATION_TYPE, "]");
 
-                node = new GetAttrNode(node, arg, new ArgumentsNode(), GetAttrNode.ARRAY_CALL);
+                node = new GetAttrNode(node, arg, new ArgumentsNode(), GetAttrNode.ARRAY_CALL, false, this.semantics);
             }
             else {
                 break;

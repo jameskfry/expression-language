@@ -10,6 +10,10 @@ import {stristr} from "locutus/php/strings/stristr";
 
 export default class StringProvider extends AbstractProvider {
     getFunctions() {
+        return this._functions().map((fn) => fn.withPhpFunction());
+    }
+
+    _functions() {
         return [
             new ExpressionFunction('strtolower', (str) => {
                 return '__runtime.strtolower(' + str + ')';

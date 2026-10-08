@@ -1,9 +1,34 @@
 export default class ExpressionFunction {
-    constructor(name, compiler, evaluator) {
+    /**
+     * @param {string} name The function name
+     * @param {function(...string): string} compiler Returns the javascript source of a call, given the compiled arguments
+     * @param {function(Object, ...*): *} evaluator Returns the value of a call, given the values then the arguments
+     * @param {function(...string): string|null} phpCompiler Optional: the same as `compiler`, for PHP source. Only used when
+     *        dumping PHP with CompiledExpressionLanguage. A function without one is called through its evaluator, which
+     *        therefore has to be registered under the same name on the PHP side.
+     */
+    constructor(name, compiler, evaluator, phpCompiler = null) {
         this.name = name;
         this.compiler = compiler;
         this.evaluator = evaluator;
+        this.phpCompiler = phpCompiler;
     }
+
+    getPhpCompiler = () => {
+        return this.phpCompiler;
+    };
+
+    /**
+     * Declares that this function is a plain PHP function, so PHP dumps call it directly: `strlen(x)` becomes `\strlen(x)`.
+     *
+     * @param {string} phpFunctionName The PHP function to call (default: the name of this expression function)
+     * @returns {ExpressionFunction} this
+     */
+    withPhpFunction = (phpFunctionName = this.name) => {
+        this.phpCompiler = (...args) => `\\${phpFunctionName}(${args.join(', ')})`;
+
+        return this;
+    };
 
     getName = () => {
         return this.name;

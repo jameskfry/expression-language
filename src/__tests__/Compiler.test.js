@@ -78,3 +78,12 @@ test('repr writes strings quoted', () => {
     compiler.repr('hello');
     expect(compiler.getSource()).toBe('"hello"');
 });
+
+test('string output is always a valid JavaScript string literal', () => {
+    for (const value of ['line\nbreak', 'tab\there', 'nul\0byte', 'cr\r', "quote'd", 'back\\slash', '$dollar', '  ', 'ünïcödé ✓', '\x07\x0b\f\b']) {
+        let compiler = new Compiler({});
+        compiler.string(value);
+
+        expect(new Function('"use strict"; return ' + compiler.getSource() + ';')()).toBe(value);
+    }
+});

@@ -40,7 +40,7 @@ export default class ParsedExpression extends Expression {
 
             switch (n.name) {
                 case 'ConstantNode': {
-                    return new ConstantNode(n.attributes?.value, !!n.isIdentifier, !!n.isNullSafe);
+                    return new ConstantNode(n.attributes?.value, !!n.isIdentifier, !!n.isNullSafe, !!n.isFloat);
                 }
                 case 'NameNode': {
                     return new NameNode(n.attributes?.name);
@@ -49,13 +49,13 @@ export default class ParsedExpression extends Expression {
                     return new NullCoalescedNameNode(n.attributes?.name);
                 }
                 case 'UnaryNode': {
-                    return new UnaryNode(n.attributes?.operator, buildNode(n.nodes?.node));
+                    return new UnaryNode(n.attributes?.operator, buildNode(n.nodes?.node), n.attributes?.semantics ?? 'symfony');
                 }
                 case 'BinaryNode': {
-                    return new BinaryNode(n.attributes?.operator, buildNode(n.nodes?.left), buildNode(n.nodes?.right));
+                    return new BinaryNode(n.attributes?.operator, buildNode(n.nodes?.left), buildNode(n.nodes?.right), !!n.attributes?.case_insensitive, n.attributes?.semantics ?? 'symfony');
                 }
                 case 'ConditionalNode': {
-                    return new ConditionalNode(buildNode(n.nodes?.expr1), buildNode(n.nodes?.expr2), buildNode(n.nodes?.expr3));
+                    return new ConditionalNode(buildNode(n.nodes?.expr1), buildNode(n.nodes?.expr2), buildNode(n.nodes?.expr3), n.attributes?.semantics ?? 'symfony');
                 }
                 case 'NullCoalesceNode': {
                     return new NullCoalesceNode(buildNode(n.nodes?.expr1), buildNode(n.nodes?.expr2));
@@ -92,14 +92,13 @@ export default class ParsedExpression extends Expression {
                         buildNode(n.nodes?.node),
                         buildNode(n.nodes?.attribute),
                         buildNode(n.nodes?.fnArguments),
-                        n.attributes?.type
+                        n.attributes?.type,
+                        !!n.attributes?.is_null_safe,
+                        n.attributes?.semantics ?? 'symfony'
                     );
                     // restore flags if present
                     if (n.attributes && typeof n.attributes.is_null_coalesce === 'boolean') {
                         node.attributes.is_null_coalesce = n.attributes.is_null_coalesce;
-                    }
-                    if (n.attributes && typeof n.attributes.is_short_circuited === 'boolean') {
-                        node.attributes.is_short_circuited = n.attributes.is_short_circuited;
                     }
                     return node;
                 }

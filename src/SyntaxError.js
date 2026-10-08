@@ -1,8 +1,31 @@
 import {getEditDistance} from "./lib/Levenshtein";
 
 export default class SyntaxError extends Error {
-    constructor(message, cursor, expression, subject, proposals) {
-        super(message);
+    constructor(message, cursor = 0, expression = '', subject, proposals) {
+        // Like Symfony, the position, the expression and the "Did you mean" hint are part of the message itself
+        let fullMessage = `${String(message).replace(/\.+$/, '')} around position ${cursor}`;
+        if (expression) {
+            fullMessage += ` for expression \`${expression}\``;
+        }
+        fullMessage += ".";
+
+        if (subject && proposals) {
+            let minScore = Number.MAX_SAFE_INTEGER,
+                guess = null;
+            for (let proposal of proposals) {
+                let distance = getEditDistance(subject, proposal);
+                if (distance < minScore) {
+                    guess = proposal;
+                    minScore = distance;
+                }
+            }
+
+            if (guess !== null && minScore < 3) {
+                fullMessage += ` Did you mean "${guess}"?`;
+            }
+        }
+
+        super(fullMessage);
         this.name = "SyntaxError";
         this.cursor = cursor;
         this.expression = expression;
@@ -11,29 +34,6 @@ export default class SyntaxError extends Error {
     }
 
     toString() {
-
-        let message = `${this.name}: ${this.message} around position ${this.cursor}`;
-        if (this.expression) {
-            message = message + ` for expression \`${this.expression}\``;
-        }
-        message += ".";
-
-        if (this.subject && this.proposals) {
-            let minScore = Number.MAX_SAFE_INTEGER,
-                guess = null;
-            for (let proposal of this.proposals) {
-                let distance = getEditDistance(this.subject, proposal);
-                if (distance < minScore) {
-                    guess = proposal;
-                    minScore = distance;
-                }
-            }
-
-            if (guess !== null && minScore < 3) {
-                message += ` Did you mean "${guess}"?`;
-            }
-        }
-
-        return message;
+        return `${this.name}: ${this.message}`;
     }
 }

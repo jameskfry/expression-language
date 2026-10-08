@@ -38,7 +38,7 @@ export class TokenStream {
             if (value) {
                 valueMessage = ` with value "${value}"`;
             }
-            compiledMessage += `Unexpected token "${token.type}" of value "${token.value}" ("${type}" expected${valueMessage})`;
+            compiledMessage += `Unexpected token "${token.type}" of value "${token.value ?? ''}" ("${type}" expected${valueMessage})`;
 
             throw new SyntaxError(compiledMessage, token.cursor, this.expression);
         }

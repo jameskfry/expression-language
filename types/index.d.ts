@@ -2,9 +2,20 @@ export = ExpressionLanguage;
 export as namespace ExpressionLanguage;
 
 declare class ExpressionLanguage {
-  constructor(cache?: CacheAdapter | null, providers?: AbstractProvider[]);
+  /**
+   * @param cache The cache used to store parsed expressions
+   * @param providers Providers of extra expression functions (any iterable)
+   * @param options Behaviour switches, see {@link ExpressionLanguageOptions}
+   */
+  constructor(
+    cache?: CacheAdapter | null,
+    providers?: Iterable<AbstractProvider>,
+    options?: ExpressionLanguageOptions
+  );
 
   functions: Record<string, FunctionDefinition>;
+  /** The parser flags every parse() / lint() adds (set by the constructor options). */
+  defaultFlags: number;
   lexer: Lexer | null;
   parser: Parser | null;
   compiler: Compiler | null;
@@ -44,7 +55,7 @@ declare class ExpressionLanguage {
   /**
    * Lint an expression for syntax errors
    * @param expression The expression to lint
-   * @param names An array of valid names (pass null for deprecated behavior)
+   * @param names An array of valid names (passing null is deprecated, use IGNORE_UNKNOWN_VARIABLES)
    * @param flags Parser flags
    */
   lint(
@@ -58,11 +69,13 @@ declare class ExpressionLanguage {
    * @param name The function name
    * @param compiler A function able to compile the function
    * @param evaluator A function able to evaluate the function
+   * @param phpCompiler A function able to compile the function to PHP (only used by dumps targeting PHP)
    */
   register(
     name: string,
     compiler: CompilerFunction,
-    evaluator: EvaluatorFunction
+    evaluator: EvaluatorFunction,
+    phpCompiler?: CompilerFunction | null
   ): void;
 
   /**
@@ -88,17 +101,23 @@ declare namespace ExpressionLanguage {
     Parser,
     IGNORE_UNKNOWN_VARIABLES,
     IGNORE_UNKNOWN_FUNCTIONS,
+    CASE_INSENSITIVE_STRING_OPERATORS,
+    SEMANTICS_JS,
+    SEMANTICS_PORTABLE,
     OPERATOR_LEFT,
     OPERATOR_RIGHT,
     tokenize,
     ExpressionFunction,
     Compiler,
+    PhpCompiler,
+    CompiledExpressionLanguage,
     ArrayAdapter,
     AbstractProvider,
     BasicProvider,
     StringProvider,
     ArrayProvider,
     DateProvider,
+    ConstantFunctionProvider,
     defaultCustomFunctions,
     // Additional exports
     Expression,
@@ -107,6 +126,9 @@ declare namespace ExpressionLanguage {
     TokenStream,
     Node,
     SyntaxError,
+    LogicException,
+    DivisionByZeroError,
+    PortabilityError,
     CacheItem,
     CompileRuntime,
     // Type exports
@@ -116,16 +138,55 @@ declare namespace ExpressionLanguage {
     EvaluatorFunction,
     CacheAdapter,
     Lexer,
+    ExpressionLanguageOptions,
+    Semantics,
+    SemanticsOperators,
+    DumpCompiledOptions,
+    CompiledExpressions,
   };
 }
 
 // Constants
 declare const IGNORE_UNKNOWN_VARIABLES: number;
 declare const IGNORE_UNKNOWN_FUNCTIONS: number;
+/**
+ * Parser flag: makes `contains`, `starts with` and `ends with` ignore case.
+ * They are case-sensitive by default, like Symfony's.
+ */
+declare const CASE_INSENSITIVE_STRING_OPERATORS: number;
+/**
+ * Parser flag: operators follow JavaScript's rules (`+` concatenates a string, `==` coerces its own way, `"0"` is truthy...)
+ * instead of Symfony's. Excludes SEMANTICS_PORTABLE.
+ */
+declare const SEMANTICS_JS: number;
+/**
+ * Parser flag: operators follow both sets of rules, and an operation that would not give the same result with both throws
+ * a PortabilityError. Excludes SEMANTICS_JS.
+ */
+declare const SEMANTICS_PORTABLE: number;
 declare const OPERATOR_LEFT: number;
 declare const OPERATOR_RIGHT: number;
 
 // Type aliases
+/**
+ * The rules operators follow where PHP and JavaScript differ (`+`, `==`, `<`, truthiness, bitwise operators, ...):
+ * - "symfony" (the default): PHP's, so that an expression gives the same result here and in Symfony
+ * - "js": JavaScript's
+ * - "portable": both; an operation that would not give the same result with both is a PortabilityError
+ */
+type Semantics = "symfony" | "js" | "portable";
+
+interface ExpressionLanguageOptions {
+  /** The rules operators follow (default: "symfony"). Equivalent to always parsing with SEMANTICS_JS or SEMANTICS_PORTABLE. */
+  semantics?: Semantics;
+
+  /**
+   * Make `contains`, `starts with` and `ends with` ignore case (default: false).
+   * Equivalent to always parsing with the CASE_INSENSITIVE_STRING_OPERATORS flag.
+   */
+  caseInsensitiveStringOperators?: boolean;
+}
+
 type VariableName = string | Record<string, string>;
 type CompilerFunction = (...args: string[]) => string;
 type EvaluatorFunction = (
@@ -136,6 +197,8 @@ type EvaluatorFunction = (
 interface FunctionDefinition {
   compiler: CompilerFunction;
   evaluator: EvaluatorFunction;
+  /** Present when the function declared how to compile itself to PHP. */
+  phpCompiler?: CompilerFunction;
 }
 
 interface Lexer {
@@ -165,19 +228,33 @@ declare function tokenize(expression: string): TokenStream;
 
 // Classes
 declare class ExpressionFunction {
+  /**
+   * @param phpCompiler Optional: the same as `compiler`, for PHP source. Only used when dumping PHP with
+   *                    CompiledExpressionLanguage. A function without one is called through its evaluator, which
+   *                    therefore has to be registered under the same name on the PHP side.
+   */
   constructor(
     name: string,
     compiler: CompilerFunction,
-    evaluator: EvaluatorFunction
+    evaluator: EvaluatorFunction,
+    phpCompiler?: CompilerFunction | null
   );
 
   name: string;
   compiler: CompilerFunction;
   evaluator: EvaluatorFunction;
+  phpCompiler: CompilerFunction | null;
 
   getName(): string;
   getCompiler(): CompilerFunction;
   getEvaluator(): EvaluatorFunction;
+  getPhpCompiler(): CompilerFunction | null;
+
+  /**
+   * Declares that this function is a plain PHP function, so PHP dumps call it directly.
+   * @param phpFunctionName The PHP function to call (default: the name of this expression function)
+   */
+  withPhpFunction(phpFunctionName?: string): this;
 
   /**
    * Creates an ExpressionFunction from a JavaScript function name (string path).
@@ -219,6 +296,12 @@ declare class Parser {
    * @param flags Parser flags
    */
   lint(tokenStream: TokenStream, names?: VariableName[], flags?: number): void;
+
+  /**
+   * The variables read by the last parsed expression. Each name maps to the position where the expression
+   * first reads it without "??", or to null when "??" guards every read.
+   */
+  getVariables(): Record<string, number | null>;
 }
 
 declare class Compiler {
@@ -257,6 +340,113 @@ declare class Compiler {
    * Returns a javascript representation of a given value.
    */
   repr(value: unknown, isIdentifier?: boolean): this;
+}
+
+/**
+ * Compiles a node tree to PHP, the way Symfony's own nodes compile themselves.
+ * Used by CompiledExpressionLanguage#dumpCompiled() with the "php" target.
+ */
+declare class PhpCompiler extends Compiler {
+  constructor(
+    functions: Record<string, FunctionDefinition>,
+    options?: { valuesVariable?: string; functionsVariable?: string }
+  );
+
+  valuesVariable: string;
+  functionsVariable: string;
+  /** Whether the compiled code calls functions through their evaluator (and so needs the functions array). */
+  usesFunctions: boolean;
+}
+
+interface DumpCompiledOptions {
+  /** The language of the generated code (default: "js"). */
+  target?: "js" | "php";
+  /**
+   * How a JavaScript dump is packaged (default: "esm"): an ES module (`export default`), a CommonJS module
+   * (`module.exports`), or a bare object expression for CompiledExpressionLanguage.load(). Ignored for PHP.
+   */
+  format?: "esm" | "cjs" | "expression";
+}
+
+/** What a JavaScript dump holds once loaded: hand it to the CompiledExpressionLanguage constructor. */
+interface CompiledExpressions {
+  format: number;
+  flags: number;
+  expressions: Array<
+    [
+      expression: string,
+      evaluate: (
+        values: Record<string, unknown>,
+        functions: Record<string, FunctionDefinition>,
+        runtime: typeof CompileRuntime
+      ) => unknown,
+      variables: Array<[name: string, firstReadAt: number | null]>
+    ]
+  >;
+}
+
+/**
+ * Decorates an ExpressionLanguage to evaluate and lint the expressions it compiled ahead of time, without parsing them.
+ *
+ * dumpCompiled() turns a list of expressions into a source file (JavaScript by default, or PHP in the format
+ * Symfony's own CompiledExpressionLanguage loads). Giving the loaded file back to the constructor makes evaluate()
+ * run the generated code. An expression that is not in the file, or whose variables are not all provided, is handled
+ * by the decorated ExpressionLanguage as usual.
+ */
+declare class CompiledExpressionLanguage {
+  /**
+   * @param expressionLanguage The language every call delegates to (or falls back to)
+   * @param compiled What dumpCompiled() produced, once loaded (the module's default export), or the source of a
+   *                 dump made with `format: "expression"`
+   * @throws LogicException when the dump was made with other parser flags than this language uses
+   */
+  constructor(
+    expressionLanguage: ExpressionLanguage,
+    compiled?: CompiledExpressions | string | null
+  );
+
+  expressionLanguage: ExpressionLanguage;
+
+  /**
+   * Evaluates the source of a dump made with `format: "expression"`.
+   * This runs the code of the dump, so only ever load a dump you produced yourself.
+   */
+  static load(source: string): CompiledExpressions;
+
+  readonly functions: Record<string, FunctionDefinition>;
+
+  compile(expression: Expression | string, names?: VariableName[]): string;
+  parse(
+    expression: Expression | string,
+    names?: VariableName[],
+    flags?: number
+  ): ParsedExpression;
+  evaluate(
+    expression: Expression | string,
+    values?: Record<string, unknown>
+  ): unknown;
+  lint(
+    expression: Expression | string,
+    names?: VariableName[],
+    flags?: number
+  ): void;
+  register(
+    name: string,
+    compiler: CompilerFunction,
+    evaluator: EvaluatorFunction,
+    phpCompiler?: CompilerFunction | null
+  ): void;
+  addFunction(expressionFunction: ExpressionFunction): void;
+  registerProvider(provider: AbstractProvider): void;
+
+  /**
+   * Compiles expressions to the source of a file that the constructor can load.
+   * The expressions that cannot be compiled (a syntax error, an unknown function...) are left out.
+   */
+  dumpCompiled(
+    expressions: Iterable<Expression | string>,
+    options?: DumpCompiledOptions
+  ): string;
 }
 
 declare class ArrayAdapter implements CacheAdapter {
@@ -329,6 +519,24 @@ declare class ArrayProvider extends AbstractProvider {
 }
 
 declare class DateProvider extends AbstractProvider {
+  getFunctions(): ExpressionFunction[];
+}
+
+/**
+ * Provides the constant() and enum() functions, restricted to a list of allowed constants.
+ *
+ * Each entry is a dotted path such as "Math.PI" or "Roles.ADMIN" in which "*" matches any sequence of
+ * characters within one path segment (never across a "."). PHP style separators ("\\" and "::") are accepted
+ * in both the entries and the names. Only own properties are followed.
+ */
+declare class ConstantFunctionProvider extends AbstractProvider {
+  /**
+   * @param allowedConstants The constants (or patterns) expressions may read
+   * @param root The object constants are resolved against (default: the global object).
+   *             A provider with a custom root cannot be used with compile().
+   */
+  constructor(allowedConstants: string[], root?: object | null);
+
   getFunctions(): ExpressionFunction[];
 }
 
@@ -429,7 +637,50 @@ declare class Node {
 // Runtime helpers required in scope (as `__runtime`) when executing compile()
 // output for expressions that use StringProvider/ArrayProvider/DateProvider
 // functions. See CompileRuntime.js for details.
+/** The operators of a set of rules, which compiled code calls as `__runtime.symfony.add(a, b)`. */
+interface SemanticsOperators {
+  add(left: unknown, right: unknown): unknown;
+  sub(left: unknown, right: unknown): unknown;
+  mul(left: unknown, right: unknown): unknown;
+  div(left: unknown, right: unknown): unknown;
+  mod(left: unknown, right: unknown): unknown;
+  pow(left: unknown, right: unknown): unknown;
+  neg(value: unknown): unknown;
+  plus(value: unknown): unknown;
+  bitAnd(left: unknown, right: unknown): unknown;
+  bitOr(left: unknown, right: unknown): unknown;
+  bitXor(left: unknown, right: unknown): unknown;
+  shl(left: unknown, right: unknown): unknown;
+  shr(left: unknown, right: unknown): unknown;
+  bitNot(value: unknown): unknown;
+  eq(left: unknown, right: unknown): boolean;
+  ne(left: unknown, right: unknown): boolean;
+  identical(left: unknown, right: unknown): boolean;
+  notIdentical(left: unknown, right: unknown): boolean;
+  lt(left: unknown, right: unknown): boolean;
+  gt(left: unknown, right: unknown): boolean;
+  le(left: unknown, right: unknown): boolean;
+  ge(left: unknown, right: unknown): boolean;
+  truthy(value: unknown): boolean;
+  str(value: unknown): string;
+  /** The subject of `matches`: like str(), but an array is a TypeError. */
+  matchSubject(value: unknown): string;
+  concat(left: unknown, right: unknown): string;
+  contains(left: unknown, right: unknown, ignoreCase?: boolean): boolean;
+  startsWith(left: unknown, right: unknown, ignoreCase?: boolean): boolean;
+  endsWith(left: unknown, right: unknown, ignoreCase?: boolean): boolean;
+  inArray(needle: unknown, haystack: unknown): boolean;
+  notInArray(needle: unknown, haystack: unknown): boolean;
+  range(start: unknown, end: unknown): unknown[];
+}
+
 declare const CompileRuntime: {
+  /** The operators of the "symfony" semantics (the default): compile() calls them. */
+  symfony: SemanticsOperators;
+  /** The operators of the "portable" semantics. */
+  portable: SemanticsOperators;
+  /** The operators of the "js" semantics (compiled code of these needs nothing, they are listed for completeness). */
+  js: SemanticsOperators;
   strtolower(str: string): string;
   strtoupper(str: string): string;
   explode(delimiter: string, str: string, limit?: number | null): string[];
@@ -444,10 +695,14 @@ declare const CompileRuntime: {
   strtotime(str: string, now?: number): number | false;
 };
 
+/**
+ * `message` holds the whole description, e.g.
+ * 'Variable "nam" is not valid around position 1 for expression `nam`. Did you mean "name"?'
+ */
 declare class SyntaxError extends Error {
   constructor(
     message: string,
-    cursor: number,
+    cursor?: number,
     expression?: string,
     subject?: string,
     proposals?: string[]
@@ -460,4 +715,37 @@ declare class SyntaxError extends Error {
   proposals?: string[];
 
   toString(): string;
+}
+
+declare class LogicException extends Error {
+  constructor(message?: string);
+  name: "LogicException";
+}
+
+/**
+ * Raised by the "portable" semantics when an operation would not give the same result in PHP (Symfony) and in JavaScript.
+ */
+declare class PortabilityError extends Error {
+  constructor(
+    operator: string,
+    operands: unknown[],
+    symfony: { value?: unknown; error?: Error },
+    javascript: { value?: unknown; error?: Error }
+  );
+
+  name: "PortabilityError";
+  operator: string;
+  operands: unknown[];
+  /** What Symfony's rules give. */
+  symfony: { value?: unknown; error?: Error };
+  /** What JavaScript's rules give. */
+  javascript: { value?: unknown; error?: Error };
+}
+
+/**
+ * Thrown by `/` and `%` when the right operand is zero.
+ */
+declare class DivisionByZeroError extends Error {
+  constructor(message?: string);
+  name: "DivisionByZeroError";
 }
