@@ -494,3 +494,90 @@ el1.functions = {
 
 el1.evaluate("true");
 el1.evaluate(new ExpressionLanguage.Expression("true"));
+
+// ============================================================================
+// 3.0 additions
+// ============================================================================
+
+// Options (third constructor argument) and the matching parser flag
+const elInsensitive = new ExpressionLanguage(null, [], {
+  caseInsensitiveStringOperators: true,
+});
+const elDefaults = new ExpressionLanguage(null, [], {});
+const flagValue: number = ExpressionLanguage.CASE_INSENSITIVE_STRING_OPERATORS;
+elInsensitive.parse(
+  '"ABC" contains "b"',
+  [],
+  ExpressionLanguage.CASE_INSENSITIVE_STRING_OPERATORS |
+    ExpressionLanguage.IGNORE_UNKNOWN_VARIABLES
+);
+
+// Any iterable of providers is accepted
+const elIterable = new ExpressionLanguage(null, new Set([new ExpressionLanguage.BasicProvider()]));
+
+// ConstantFunctionProvider
+const constantProvider = new ExpressionLanguage.ConstantFunctionProvider([
+  "Math.PI",
+  "Roles.*",
+]);
+const constantProviderWithRoot = new ExpressionLanguage.ConstantFunctionProvider(
+  ["Colors.*"],
+  { Colors: { RED: "#f00" } }
+);
+constantProvider.getFunctions() satisfies ExpressionLanguage.ExpressionFunction[];
+const elWithConstants = new ExpressionLanguage(null, [constantProvider]);
+
+// Errors
+const syntaxErrorShort = new ExpressionLanguage.SyntaxError("Oops");
+const syntaxErrorFull = new ExpressionLanguage.SyntaxError("Oops", 3, "expr", "ex", ["expr"]);
+syntaxErrorShort.cursor satisfies number;
+const logicException: Error = new ExpressionLanguage.LogicException("nope");
+const divisionByZero: Error = new ExpressionLanguage.DivisionByZeroError();
+
+// ============================================================================
+// CompiledExpressionLanguage
+// ============================================================================
+
+const compiledLanguage = new ExpressionLanguage.CompiledExpressionLanguage(
+  new ExpressionLanguage()
+);
+const jsDump: string = compiledLanguage.dumpCompiled(["a + b", "c ?? 1"]);
+const phpDump: string = compiledLanguage.dumpCompiled(new Set(["a + b"]), { target: "php" });
+const cjsDump: string = compiledLanguage.dumpCompiled(["a"], { target: "js", format: "cjs" });
+const loadedDump: ExpressionLanguage.CompiledExpressions = ExpressionLanguage.CompiledExpressionLanguage.load(
+  compiledLanguage.dumpCompiled(["a"], { format: "expression" })
+);
+const fastLanguage = new ExpressionLanguage.CompiledExpressionLanguage(new ExpressionLanguage(), loadedDump);
+const fastFromSource = new ExpressionLanguage.CompiledExpressionLanguage(new ExpressionLanguage(), "({})");
+const fastResult: unknown = fastLanguage.evaluate("a + b", { a: 1, b: 2 });
+fastLanguage.lint("a + b", ["a", "b"], ExpressionLanguage.IGNORE_UNKNOWN_FUNCTIONS);
+fastLanguage.functions satisfies Record<string, ExpressionLanguage.FunctionDefinition>;
+fastLanguage.register("x", () => "1", () => 1, () => "1");
+
+// PHP compilers on functions
+const phpAware = new ExpressionLanguage.ExpressionFunction("f", () => "1", () => 1, (x) => `\\f(${x})`);
+phpAware.getPhpCompiler() satisfies ExpressionLanguage.CompilerFunction | null;
+const phpDirect: ExpressionLanguage.ExpressionFunction = new ExpressionLanguage.ExpressionFunction("g", () => "1", () => 1).withPhpFunction("app_g");
+const phpCompiler = new ExpressionLanguage.PhpCompiler({}, { valuesVariable: "v" });
+phpCompiler.usesFunctions satisfies boolean;
+new ExpressionLanguage.Parser().getVariables() satisfies Record<string, number | null>;
+el1.defaultFlags satisfies number;
+
+// ============================================================================
+// Semantics
+// ============================================================================
+
+const semanticsDefault = new ExpressionLanguage();
+const semanticsJs = new ExpressionLanguage(null, [], { semantics: "js" });
+const semanticsPortable = new ExpressionLanguage(null, [], { semantics: "portable", caseInsensitiveStringOperators: true });
+const semanticsName: ExpressionLanguage.Semantics = "symfony";
+const jsFlag: number = ExpressionLanguage.SEMANTICS_JS;
+const portableFlag: number = ExpressionLanguage.SEMANTICS_PORTABLE;
+semanticsDefault.parse("1 + 1", [], ExpressionLanguage.SEMANTICS_JS | ExpressionLanguage.IGNORE_UNKNOWN_VARIABLES);
+ExpressionLanguage.CompileRuntime.symfony.add(1, 2) satisfies unknown;
+ExpressionLanguage.CompileRuntime.portable.truthy("a") satisfies boolean;
+const operators: ExpressionLanguage.SemanticsOperators = ExpressionLanguage.CompileRuntime.js;
+const portabilityError = new ExpressionLanguage.PortabilityError("+", ["5", 1], { value: 6 }, { value: "51" });
+portabilityError.symfony satisfies { value?: unknown; error?: Error };
+portabilityError.operands satisfies unknown[];
+const asError: Error = portabilityError;

@@ -5,6 +5,10 @@ import {strtotime} from "locutus/php/datetime/strtotime";
 
 export default class DateProvider extends AbstractProvider {
     getFunctions() {
+        return this._functions().map((fn) => fn.withPhpFunction());
+    }
+
+    _functions() {
         return [
             new ExpressionFunction('date', function(format, timestamp) {
                 let remaining = "";

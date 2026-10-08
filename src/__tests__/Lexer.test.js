@@ -190,13 +190,50 @@ test('tokenize throws error on unclosed brace', () => {
     }
 });
 
-test('tokenize ignores an unclosed block comment through the end of the expression', () => {
+test('tokenize does not treat an unclosed block comment as a comment', () => {
+    // Like Symfony: "/*" without "*/" lexes as two operators, which the parser then rejects
     let stream = tokenize('65536 /* unclosed');
 
-    expect(stream.tokens).toHaveLength(2);
-    expect(stream.tokens[0].type).toBe(Token.NUMBER_TYPE);
-    expect(stream.tokens[0].value).toBe(65536);
-    expect(stream.tokens[1].type).toBe(Token.EOF_TYPE);
+    expect(stream.tokens.map((t) => t.value)).toEqual([65536, '/', '*', 'unclosed', null]);
+});
+
+test('numbers: a trailing dot is part of the number, but ".." stays the range operator', () => {
+    expect(tokenize('1.').tokens.map((t) => [t.type, t.value])).toEqual([[Token.NUMBER_TYPE, 1], [Token.EOF_TYPE, null]]);
+    expect(tokenize('1.5').tokens[0].value).toBe(1.5);
+    expect(tokenize('1..5').tokens.map((t) => t.value)).toEqual([1, '..', 5, null]);
+    expect(tokenize('1.._5').tokens.map((t) => t.value)).toEqual([1, '..', '_5', null]);
+});
+
+test('word operators may be followed by an opening parenthesis', () => {
+    expect(tokenize('not(a)').tokens.slice(0, 2).map((t) => [t.type, t.value])).toEqual([[Token.OPERATOR_TYPE, 'not'], [Token.PUNCTUATION_TYPE, '(']]);
+    expect(tokenize('a and(b)').tokens[1].type).toBe(Token.OPERATOR_TYPE);
+    expect(tokenize('a in[1]').tokens[1].type).toBe(Token.NAME_TYPE);
+});
+
+test('word operators are only operators when they stand on their own', () => {
+    for (const name of ['index', 'android', 'order', 'nothing', 'inside', 'contained', 'xorg']) {
+        expect(tokenize(name).tokens[0].type).toBe(Token.NAME_TYPE);
+    }
+    // an operator glued to what precedes it is a name, which is what makes "foo.not(1)" a method call
+    expect(tokenize('foo.not(1)').tokens[2]).toMatchObject({type: Token.NAME_TYPE, value: 'not'});
+});
+
+test('string escapes follow PHP stripcslashes()', () => {
+    const value = (expression) => tokenize(expression).tokens[0].value;
+
+    expect(value('"a\\nb"')).toBe('a\nb');
+    expect(value('"a\\tb"')).toBe('a\tb');
+    expect(value('"\\x41\\101"')).toBe('AA');
+    expect(value('"say \\"hi\\""')).toBe('say "hi"');
+    expect(value("'it\\'s'")).toBe("it's");
+    expect(value('"back\\\\slash"')).toBe('back\\slash');
+    // an escape sequence PHP does not know just loses its backslash, so regexes need doubled backslashes
+    expect(value('"\\d+"')).toBe('d+');
+    expect(value('"\\\\d+"')).toBe('\\d+');
+});
+
+test('an unterminated string is not mistaken for a later one', () => {
+    expect(() => tokenize('"abc \'x\'')).toThrow('Unexpected character');
 });
 
 test('tokenize throws on an unexpected closing punctuation with nothing open', () => {

@@ -398,14 +398,15 @@ test('parse', () => {
     }
 });
 
-test('a shorthand ternary without a colon uses an empty string for the else branch', () => {
+test('a ternary without a colon has a null else branch, like Symfony', () => {
     let parser = new Parser();
     let node = parser.parse(tokenize("true ? 'yes'"), []);
 
     expect(node).toBeInstanceOf(ConditionalNode);
     expect(node.nodes.expr3).toBeInstanceOf(ConstantNode);
-    expect(node.nodes.expr3.attributes.value).toBe('');
+    expect(node.nodes.expr3.attributes.value).toBeNull();
     expect(node.evaluate({}, {})).toBe('yes');
+    expect(parser.parse(tokenize("false ? 'yes'"), []).evaluate({}, {})).toBeNull();
 });
 
 test('a parenthesized expression can be used as a hash key', () => {
@@ -415,11 +416,33 @@ test('a parenthesized expression can be used as a hash key', () => {
     expect(node.evaluate({}, {})).toEqual({2: 'two'});
 });
 
-test('parseExpression guards against runaway recursion on a pathologically long binary chain', () => {
+test('the nesting level bounds the depth of the tree, not the length of the expression', () => {
     let parser = new Parser();
-    let expression = '1' + ' + 1'.repeat(1005);
 
-    expect(() => parser.parse(tokenize(expression))).toThrow('Too many executions');
+    // 1100 items are only one level deep
+    expect(parser.parse(tokenize('[' + Array(1100).fill('1').join(', ') + ']')).evaluate({}, {})).toHaveLength(1100);
+    expect(parser.parse(tokenize('f(' + Array(1100).fill('1').join(', ') + ')'), [], 2).nodes.fnArguments).toBeDefined();
+
+    // ...whereas a left-nested chain gets one level deeper per operator
+    expect(() => parser.parse(tokenize('1' + ' + 1'.repeat(300)))).toThrow('Expression is nested too deeply, the maximum nesting level is 256');
+    expect(() => parser.parse(tokenize('('.repeat(300) + '1' + ')'.repeat(300)))).toThrow('nested too deeply');
+    expect(() => parser.parse(tokenize('['.repeat(300) + ']'.repeat(300)))).toThrow('nested too deeply');
+    expect(() => parser.parse(tokenize('a' + '.b'.repeat(300)), ['a'])).toThrow('nested too deeply');
+
+    // a comfortable depth is fine, and the guard resets between parses
+    expect(parser.parse(tokenize('1' + ' + 1'.repeat(100))).evaluate({}, {})).toBe(101);
+    expect(parser.parse(tokenize('1' + ' + 1'.repeat(100))).evaluate({}, {})).toBe(101);
+});
+
+test('null-safe array access parses to a null-safe ARRAY_CALL, and plain ".[" is rejected', () => {
+    let parser = new Parser();
+    let node = parser.parse(tokenize('foo?.[0]'), ['foo']);
+
+    expect(node).toBeInstanceOf(GetAttrNode);
+    expect(node.attributes.type).toBe(GetAttrNode.ARRAY_CALL);
+    expect(node.attributes.is_null_safe).toBe(true);
+    expect(node.dump()).toBe('foo?.[0]');
+    expect(() => parser.parse(tokenize('foo.[0]'), ['foo'])).toThrow('Expected name');
 });
 
 test("Parser's own lint supports deprecated null names by converting to IGNORE_UNKNOWN_VARIABLES", () => {

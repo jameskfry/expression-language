@@ -51,7 +51,13 @@ export default class ArrayNode extends Node {
         else {
             result = {};
             for (let pair of this.getKeyValuePairs()) {
-                result[pair.key.evaluate(functions, values)] = pair.value.evaluate(functions, values);
+                // defineProperty so that a "__proto__" key is a plain entry and never replaces the result's prototype
+                Object.defineProperty(result, pair.key.evaluate(functions, values), {
+                    value: pair.value.evaluate(functions, values),
+                    enumerable: true,
+                    writable: true,
+                    configurable: true,
+                });
             }
         }
 
@@ -109,8 +115,14 @@ export default class ArrayNode extends Node {
             first = false;
 
             if (withKeys) {
-                compiler.compile(pair.key)
-                    .raw(': ');
+                if (pair.key instanceof ConstantNode) {
+                    compiler.compile(pair.key);
+                }
+                else {
+                    // a key given as an expression, e.g. {(1 + 1): 'two'}, is a computed property name
+                    compiler.raw('[').compile(pair.key).raw(']');
+                }
+                compiler.raw(': ');
             }
 
             compiler.compile(pair.value);

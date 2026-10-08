@@ -27,15 +27,12 @@ test('toArray/dump renders as a nullish-coalescing expression', () => {
     expect(node.dump()).toBe('("left") ?? ("right")');
 });
 
-test('evaluate marks a GetAttrNode left side (and its GetAttrNode descendants) as null-coalesced', () => {
+test('constructing marks a GetAttrNode left side (and its GetAttrNode descendants) as null-coalesced', () => {
     let inner = new GetAttrNode(new NameNode('a'), new ConstantNode('b', true), new ArgumentsNode(), GetAttrNode.PROPERTY_CALL);
     let outer = new GetAttrNode(inner, new ConstantNode('c', true), new ArgumentsNode(), GetAttrNode.PROPERTY_CALL);
     let node = new NullCoalesceNode(outer, new ConstantNode('default'));
 
-    expect(outer.attributes.is_null_coalesce).toBe(false);
-    expect(inner.attributes.is_null_coalesce).toBe(false);
-
-    node.evaluate({}, {a: {}});
+    expect(node.evaluate({}, {a: {}})).toBe('default');
 
     expect(outer.attributes.is_null_coalesce).toBe(true);
     expect(inner.attributes.is_null_coalesce).toBe(true);

@@ -9,7 +9,7 @@ function getEvaluateData() {
 
 function getCompileData() {
     return [
-        ['foo ?? null', new NullCoalescedNameNode('foo')],
+        ['(typeof foo === "undefined" ? null : foo)', new NullCoalescedNameNode('foo')],
     ];
 }
 
@@ -43,4 +43,12 @@ test('dump NullCoalescedNameNode', () => {
     for (let dumpParams of getDumpData()) {
         expect(dumpParams[1].dump()).toBe(dumpParams[0]);
     }
+});
+test('compiled NullCoalescedNameNode is null for an undeclared name and the value for a declared one', () => {
+    let compiler = new Compiler({});
+    new NullCoalescedNameNode('foo').compile(compiler);
+    const source = compiler.getSource();
+
+    expect(new Function('return ' + source + ';')()).toBeNull();
+    expect(new Function('foo', 'return ' + source + ';')('bar')).toBe('bar');
 });

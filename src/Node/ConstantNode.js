@@ -1,10 +1,18 @@
 import Node from "./Node";
 
 export default class ConstantNode extends Node {
-    constructor(value, isIdentifier = false, isNullSafe = false) {
+    /**
+     * @param {*} value
+     * @param {boolean} isIdentifier Whether the value is a property / method name
+     * @param {boolean} isNullSafe Whether it follows a null-safe operator (?.)
+     * @param {boolean} isFloat Whether a number was written as a float (1.0, 1e3). It changes nothing to JavaScript,
+     *                          which has a single number type, but it does to the PHP code that can be dumped.
+     */
+    constructor(value, isIdentifier = false, isNullSafe = false, isFloat = false) {
         super({}, {value: value});
         this.isIdentifier = isIdentifier;
         this.isNullSafe = isNullSafe;
+        this.isFloat = isFloat;
         this.name = 'ConstantNode';
     }
 

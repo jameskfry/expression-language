@@ -1,6 +1,13 @@
 import ExpressionLanguage from "../ExpressionLanguage";
 import ExpressionFunction from "../ExpressionFunction";
 import ELSyntaxError from "../SyntaxError";
+import DivisionByZeroError from "../DivisionByZeroError";
+import CompileRuntime from "../CompileRuntime";
+import PortabilityError from "../Semantics/PortabilityError";
+import ArrayAdapter from "../Cache/ArrayAdapter";
+import ParsedExpression from "../ParsedExpression";
+import LogicException from "../LogicException";
+import {CASE_INSENSITIVE_STRING_OPERATORS, IGNORE_UNKNOWN_FUNCTIONS, IGNORE_UNKNOWN_VARIABLES, SEMANTICS_JS, SEMANTICS_PORTABLE} from "../Parser";
 
 test('short circuit evaluate', () => {
     let obj = {
@@ -31,6 +38,8 @@ test('short circuit compile', () => {
         ['true or foo', [{foo: 'foo'}], true],
     ];
 
+    // the compiled code of the default semantics calls the runtime
+    const __runtime = CompileRuntime;
     for (let shortCircuit of shortCircuits) {
         let exprLang = new ExpressionLanguage();
         let compiled = exprLang.compile(shortCircuit[0], shortCircuit[1]);
@@ -39,7 +48,7 @@ test('short circuit compile', () => {
 });
 
 test('caching for overridden variable names', () => {
-    let expressionLanguage = new ExpressionLanguage(),
+    let expressionLanguage = new ExpressionLanguage(null, [], {semantics: 'js'}),
         expression = 'a + b';
 
     expressionLanguage.evaluate(expression, {a: 1, b: 1});
@@ -107,11 +116,12 @@ describe('supports all literals', () => {
 });
 
 test('strict equality', () => {
-    let expressionLanguage = new ExpressionLanguage(),
+    let expressionLanguage = new ExpressionLanguage(null, [], {semantics: 'js'}),
         expression = '123 === a';
 
     let result = expressionLanguage.compile(expression, ['a']);
     expect(result).toBe("(123 === a)");
+    expect(new ExpressionLanguage().compile(expression, ['a'])).toBe("__runtime.symfony.identical(123, a)");
 });
 
 // New tests adapted from Symfony ExpressionLanguageTest (PHP)
@@ -197,84 +207,67 @@ test('bad callable', () => {
         expect(true).toBe(false);
     } catch (err) {
         //console.log(err);
-        expect(err.toString()).toBe('Error: Method "myfunction" is undefined on object.');
+        expect(err.toString()).toBe('Error: Unable to call method "myfunction" of object "Object".');
     }
 });
 
+function compiledResult(el, expr, names = [], values = []) {
+    return new Function('__runtime', ...names, 'return ' + el.compile(expr, names) + ';')(CompileRuntime, ...values);
+}
+
 test('built-in min function', () => {
     const el = new ExpressionLanguage();
-    const expr = 'min(1,2,3)';
-    const compiled = el.compile(expr, []);
-    expect(compiled).toBe('Math.min(1, 2, 3)');
-
-    const result = el.evaluate(expr, {});
-    expect(result).toBe(1);
+    expect(el.evaluate('min(1,2,3)')).toBe(1);
+    expect(compiledResult(el, 'min(1,2,3)')).toBe(1);
 });
 
 test('built-in max function', () => {
     const el = new ExpressionLanguage();
-    const expr = 'max(1,2,3)';
-    const compiled = el.compile(expr, []);
-    expect(compiled).toBe('Math.max(1, 2, 3)');
-
-    const result = el.evaluate(expr, {});
-    expect(result).toBe(3);
+    expect(el.evaluate('max(1,2,3)')).toBe(3);
+    expect(compiledResult(el, 'max(1,2,3)')).toBe(3);
 });
 
-test('built-in constant function evaluates globals and dotted paths', () => {
+test('min() and max() accept a single array or hash like PHP, evaluated and compiled', () => {
     const el = new ExpressionLanguage();
-    expect(el.evaluate('constant("Math.PI")')).toBe(Math.PI);
-    // also via compile+eval
-    const code = el.compile('constant("Math.E")', []);
-    expect(eval(code)).toBe(Math.E);
+    for (const [expr, expected] of [
+        ['min([3, 1, 2])', 1],
+        ['max([3, 1, 2])', 3],
+        ['min({a: 5, b: 4})', 4],
+        ['max({a: 5, b: 9})', 9],
+        ['min("b", "a", "c")', 'a'],
+        ['max(a)', 7],
+    ]) {
+        expect(el.evaluate(expr, {a: [7, 2]})).toBe(expected);
+        expect(compiledResult(el, expr, ['a'], [[7, 2]])).toBe(expected);
+    }
 });
 
-test('built-in constant function falls back to values map', () => {
+test('min() and max() reject what PHP rejects, with PHP\'s messages', () => {
     const el = new ExpressionLanguage();
-    const values = {FOO: 42};
-    expect(el.evaluate('constant("FOO")', values)).toBe(42);
+    for (const name of ['min', 'max']) {
+        for (const run of [(expr) => el.evaluate(expr), (expr) => compiledResult(el, expr)]) {
+            expect(() => run(`${name}([])`)).toThrow(`${name}(): Argument #1 ($value) must contain at least one element`);
+            expect(() => run(`${name}()`)).toThrow(`${name}() expects at least 1 argument, 0 given`);
+            expect(() => run(`${name}(4)`)).toThrow(`${name}(): Argument #1 ($value) must be of type array, int given`);
+            expect(() => run(`${name}("a")`)).toThrow(`${name}(): Argument #1 ($value) must be of type array, string given`);
+        }
+    }
 });
 
-test('built-in constant returns undefined for unknown or invalid names', () => {
+test('built-in count function counts arrays and hashes, evaluated and compiled', () => {
     const el = new ExpressionLanguage();
-    expect(el.evaluate('constant("This.Does.Not.Exist")')).toBeUndefined();
-    expect(el.evaluate('constant(123)')).toBeUndefined();
-    expect(el.evaluate('constant("")')).toBeUndefined();
+    expect(el.evaluate('count([1, 2, 3])')).toBe(3);
+    expect(el.evaluate('count({a: 1, b: 2})')).toBe(2);
+    expect(compiledResult(el, 'count(a)', ['a'], [[1, 2]])).toBe(2);
+    expect(() => el.evaluate('count("abc")')).toThrow('count(): Argument #1 ($value) must be of type Countable|array, string given');
+    expect(() => el.evaluate('count(null)')).toThrow('count(): Argument #1 ($value) must be of type Countable|array, null given');
+    expect(() => compiledResult(el, 'count(1.5)')).toThrow('must be of type Countable|array, float given');
 });
 
-// enum() tests
-
-test('built-in enum evaluates and compiles using PHP-like FQN string', () => {
+test('constant() and enum() are not built in anymore: they require a ConstantFunctionProvider', () => {
     const el = new ExpressionLanguage();
-    // prepare a global-like namespace with an enum-like object
-    const root = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : global);
-    root.App = root.App || {};
-    root.App.SomeNamespace = root.App.SomeNamespace || {};
-    root.App.SomeNamespace.Foo = { Bar: { kind: 'Foo.Bar' } };
-
-    // PHP-like input with backslashes and ::
-    const expr = 'enum("App\\\\SomeNamespace\\\\Foo::Bar")';
-    const value = el.evaluate(expr);
-    expect(value).toMatchObject({ kind: 'Foo.Bar' });
-
-    const code = el.compile(expr, []);
-    // ensure global is visible to eval
-    expect(eval(code)).toMatchObject({ kind: 'Foo.Bar' });
-});
-
-test('built-in enum supports dotted path as well', () => {
-    const el = new ExpressionLanguage();
-    const root = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : global);
-    root.App = root.App || {};
-    root.App.Other = { Enum: { CaseA: { ok: true } } };
-    expect(el.evaluate('enum("App.Other.Enum.CaseA")')).toMatchObject({ ok: true });
-});
-
-test('built-in enum returns undefined on invalid input or missing members', () => {
-    const el = new ExpressionLanguage();
-    expect(el.evaluate('enum(123)')).toBeUndefined();
-    expect(el.evaluate('enum("")')).toBeUndefined();
-    expect(el.evaluate('enum("Not.Exist::Nope")')).toBeUndefined();
+    expect(() => el.evaluate('constant("Math.PI")')).toThrow('The function "constant" does not exist');
+    expect(() => el.evaluate('enum("Math.PI")')).toThrow('The function "enum" does not exist');
 });
 
 test('operator collisions evaluate and compile', () => {
@@ -282,13 +275,13 @@ test('operator collisions evaluate and compile', () => {
     const expr = 'foo.not in [bar]';
     const compiled = el.compile(expr, ['foo', 'bar']);
     // compiled code should be self-contained (no undefined `includes` global) and evaluable
-    expect(compiled).toBe('(function(__l, __r){return __r.indexOf(__l) >= 0;})(foo.not, [bar])');
+    expect(compiled).toContain('(foo.not, [bar])');
 
     const resultEvaluated = el.evaluate(expr, {foo: {not: 'test'}, bar: 'test'});
     expect(resultEvaluated).toBe(true);
 
-    const fn = new Function('foo', 'bar', 'return ' + compiled + ';');
-    expect(fn({not: 'test'}, 'test')).toBe(true);
+    const fn = new Function('__runtime', 'foo', 'bar', 'return ' + compiled + ';');
+    expect(fn(CompileRuntime, {not: 'test'}, 'test')).toBe(true);
 });
 
 test('parse() without a names argument defaults to [] instead of throwing a TypeError', () => {
@@ -306,7 +299,7 @@ test('parse throws on incomplete expression (node.)', () => {
 });
 
 test('comments ignored in evaluate and compile', () => {
-    const el = new ExpressionLanguage();
+    const el = new ExpressionLanguage(null, [], {semantics: 'js'});
     expect(el.evaluate('1 /* foo */ + 2')).toBe(3);
     expect(el.compile('1 /* foo */ + 2')).toBe('(1 + 2)');
 });
@@ -398,7 +391,7 @@ test('ternary operator supported', () => {
                 expect(true).toBe(false);
             }
             catch(err) {
-                expect(err.message).toBe(expectedExceptionMessage);
+                expect(err.message).toContain(expectedExceptionMessage);
             }
         }
         else {
@@ -417,8 +410,11 @@ function getTernary() {
         ['a ? \'yes\' : \'no\'', {}, 'no', 'Variable "a" is not valid'],
         ['a ?: "short-hand"', {a: "find me"}, "find me"],
         ['a ?: "short-hand"', {a: false}, "short-hand"],
-        ['a ? b', {a: false, b: 'yay'}, 'yay'],
-        ['a ? b', {a: 'yay', b: false}, 'yay']
+        // like Symfony, a missing else branch is null (it is NOT an elvis operator)
+        ['a ? b', {a: false, b: 'yay'}, null],
+        ['a ? b', {a: true, b: 'yay'}, 'yay'],
+        ['a ? \'yes\'', {a: false}, null],
+        ['a ? \'yes\'', {a: true}, 'yes'],
     ]
 }
 
@@ -782,3 +778,380 @@ function getEvaluateData() {
         ]
     ];
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// string operators: case-sensitive by default, case-insensitive on request
+// ---------------------------------------------------------------------------------------------------------
+
+const STRING_OPERATOR_EXPRESSIONS = [
+    ['"Hello World" contains "hello"', false, true],
+    ['"Hello World" contains "World"', true, true],
+    ['"Hello World" starts with "HELLO"', false, true],
+    ['"Hello World" starts with "Hello"', true, true],
+    ['"Hello World" ends with "WORLD"', false, true],
+    ['"Hello World" ends with "World"', true, true],
+    ['"Hello World" contains "xyz"', false, false],
+];
+
+test('contains, starts with and ends with are case-sensitive by default', () => {
+    const el = new ExpressionLanguage();
+
+    for (const [expression, caseSensitiveResult] of STRING_OPERATOR_EXPRESSIONS) {
+        expect(el.evaluate(expression)).toBe(caseSensitiveResult);
+        expect(compiledResult(el, expression)).toBe(caseSensitiveResult);
+    }
+});
+
+test('the caseInsensitiveStringOperators option makes them ignore case', () => {
+    const el = new ExpressionLanguage(null, [], {caseInsensitiveStringOperators: true});
+
+    for (const [expression, , caseInsensitiveResult] of STRING_OPERATOR_EXPRESSIONS) {
+        expect(el.evaluate(expression)).toBe(caseInsensitiveResult);
+        expect(compiledResult(el, expression)).toBe(caseInsensitiveResult);
+    }
+});
+
+test('the option does not leak into other instances', () => {
+    new ExpressionLanguage(null, [], {caseInsensitiveStringOperators: true});
+
+    expect(new ExpressionLanguage().evaluate('"ABC" contains "b"')).toBe(false);
+});
+
+test('the CASE_INSENSITIVE_STRING_OPERATORS flag does the same for a single parse() / lint()', () => {
+    const el = new ExpressionLanguage();
+
+    expect(el.evaluate(el.parse('"ABC" contains "b"', [], CASE_INSENSITIVE_STRING_OPERATORS))).toBe(true);
+    // ...without altering what the same expression means when parsed without the flag (the cache is keyed by flags)
+    expect(el.evaluate('"ABC" contains "b"')).toBe(false);
+    expect(el.evaluate(el.parse('"ABC" contains "b"', [], CASE_INSENSITIVE_STRING_OPERATORS))).toBe(true);
+    expect(() => el.lint('"ABC" contains "b"', [], CASE_INSENSITIVE_STRING_OPERATORS)).not.toThrow();
+});
+
+test('the flag only concerns the three string operators', () => {
+    const el = new ExpressionLanguage(null, [], {caseInsensitiveStringOperators: true});
+
+    expect(el.evaluate('"ABC" == "abc"')).toBe(false);
+    expect(el.evaluate('"ABC" matches "/abc/"')).toBe(false);
+    expect(el.evaluate('"ABC" in ["abc"]')).toBe(false);
+});
+
+test('string operators treat null as an empty string and numbers as their digits', () => {
+    const el = new ExpressionLanguage();
+
+    expect(el.evaluate('a contains ""', {a: null})).toBe(true);
+    expect(el.evaluate('a contains "x"', {a: null})).toBe(false);
+    expect(el.evaluate('123 contains 2')).toBe(true);
+    expect(el.evaluate('a starts with 1', {a: 12})).toBe(true);
+});
+
+// ---------------------------------------------------------------------------------------------------------
+// the parse cache
+// ---------------------------------------------------------------------------------------------------------
+
+test('the parse cache is keyed by the flags as well', () => {
+    const el = new ExpressionLanguage();
+
+    // parsed first while ignoring unknown variables...
+    expect(el.parse('foo', [], IGNORE_UNKNOWN_VARIABLES)).toBeDefined();
+    // ...which must not let the same expression through when the variable is required
+    expect(() => el.parse('foo', [])).toThrow('Variable "foo" is not valid');
+    expect(() => el.parse('foo', [], 0)).toThrow(ELSyntaxError);
+});
+
+test('parse() returns the same ParsedExpression for the same expression, names and flags', () => {
+    const el = new ExpressionLanguage();
+
+    expect(el.parse('a + b', ['a', 'b'])).toBe(el.parse('a + b', ['b', 'a']));
+    expect(el.parse('a + b', ['a', 'b'])).not.toBe(el.parse('a + b', ['a', 'b'], IGNORE_UNKNOWN_FUNCTIONS));
+});
+
+test('parse() leaves the names array of the caller untouched', () => {
+    const el = new ExpressionLanguage();
+    const names = ['b', 'a'];
+
+    el.parse('a + b', names);
+    el.compile('a + b', names);
+    el.lint('a + b', names);
+
+    expect(names).toEqual(['b', 'a']);
+});
+
+// ---------------------------------------------------------------------------------------------------------
+// error messages
+// ---------------------------------------------------------------------------------------------------------
+
+test('syntax errors carry their position, expression and a suggestion in their message', () => {
+    const el = new ExpressionLanguage();
+
+    expect(() => el.evaluate('nam', {name: 1})).toThrow('Variable "nam" is not valid around position 1 for expression `nam`. Did you mean "name"?');
+    expect(() => el.evaluate('minn(1)')).toThrow('The function "minn" does not exist around position 1 for expression `minn(1)`. Did you mean "min"?');
+    expect(() => el.evaluate('1 +')).toThrow('Unexpected token "end of expression" of value "" around position 4 for expression `1 +`.');
+});
+
+// ---------------------------------------------------------------------------------------------------------
+// objects & arrays
+// ---------------------------------------------------------------------------------------------------------
+
+test('methods are called on their object, so they can use `this`', () => {
+    class Greeter {
+        constructor(name) { this.name = name; }
+        greet(greeting) { return greeting + ', ' + this.name; }
+    }
+    const el = new ExpressionLanguage();
+
+    expect(el.evaluate('g.greet("Hello")', {g: new Greeter('World')})).toBe('Hello, World');
+    expect(el.evaluate('g?.greet("Hi")', {g: new Greeter('there')})).toBe('Hi, there');
+});
+
+test('null-safe array access: foo?.[0]', () => {
+    const el = new ExpressionLanguage();
+
+    expect(el.evaluate('foo?.[0]', {foo: null})).toBeNull();
+    expect(el.evaluate('foo?.[0]', {foo: [5]})).toBe(5);
+    expect(el.evaluate('foo?.[0].bar', {foo: null})).toBeNull();
+    expect(el.evaluate('foo?.[0]?.bar', {foo: [null]})).toBeNull();
+    expect(el.evaluate('foo?.[0]?.bar', {foo: [{bar: 3}]})).toBe(3);
+    expect(el.evaluate('foo?.bar?.[1]', {foo: {bar: [8, 9]}})).toBe(9);
+    expect(el.evaluate('foo?.[0] ?? "default"', {foo: null})).toBe('default');
+
+    expect(() => el.evaluate('foo?.[0].bar', {foo: [null]})).toThrow('Unable to get property "bar" of non-object "foo?.[0]".');
+    expect(() => el.evaluate('foo?.[0]', {foo: 5})).toThrow('Unable to get an item of non-array "foo".');
+    expect(() => el.evaluate('foo.[0]', {foo: [1]})).toThrow('Expected name');
+
+    for (const [expression, values] of [['foo?.[0]', {foo: null}], ['foo?.[0]', {foo: [5]}], ['foo?.bar?.[1]', {foo: {bar: [8, 9]}}], ['foo?.[0] ?? "d"', {foo: null}]]) {
+        expect(compiledResult(el, expression, ['foo'], [values.foo]) ?? null).toBe(el.evaluate(expression, values));
+    }
+});
+
+test('a `?.` chain evaluated twice with different values does not remember the first evaluation', () => {
+    const el = new ExpressionLanguage();
+    const parsed = el.parse('a?.b.c', ['a']);
+
+    expect(el.evaluate(parsed, {a: null})).toBeNull();
+    expect(el.evaluate(parsed, {a: {b: {c: 1}}})).toBe(1);
+    expect(() => el.evaluate(parsed, {a: {b: null}})).toThrow('Unable to get property "c" of non-object "a?.b".');
+});
+
+test('expressions cannot reach constructors or prototypes through properties, methods or items', () => {
+    const el = new ExpressionLanguage();
+
+    for (const expression of [
+        'o.constructor',
+        'o.constructor.constructor',
+        'o.__proto__',
+        'o.__proto__.constructor',
+        'o["constructor"]',
+        'o["__proto__"]',
+        'o.constructor("return process")',
+        'o.__defineGetter__("x", 1)',
+        'a.constructor',
+        'a["__proto__"]',
+        '({})["constructor"]',
+    ]) {
+        expect(() => el.evaluate(expression, {o: {x: 1}, a: [1]})).toThrow(/Access to "[_a-zA-Z]+" is not allowed|Unable to/);
+    }
+});
+
+test('data that merely has a key named like a prototype member is still readable', () => {
+    const el = new ExpressionLanguage();
+    const data = JSON.parse('{"constructor": "mine", "prototype": 1, "__proto__": {"x": 1}}');
+
+    expect(el.evaluate('d.constructor', {d: data})).toBe('mine');
+    expect(el.evaluate('d["prototype"]', {d: data})).toBe(1);
+});
+
+test('a hash literal with a "__proto__" key is a plain entry and does not change the prototype', () => {
+    const el = new ExpressionLanguage();
+    const result = el.evaluate('{"__proto__": {"polluted": 1}, "other": 2}');
+
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(Object.keys(result)).toEqual(['__proto__', 'other']);
+    expect(({}).polluted).toBeUndefined();
+});
+
+test('a hash literal with a computed key compiles to a computed property name', () => {
+    const el = new ExpressionLanguage();
+
+    expect(compiledResult(el, '{a: 1, (1 + 1): 2, "b": 3}')).toEqual({a: 1, 2: 2, b: 3});
+});
+
+test('string literals follow PHP: control characters are unescaped, other escapes lose their backslash', () => {
+    const el = new ExpressionLanguage();
+
+    expect(el.evaluate('"a\\nb"')).toBe('a\nb');
+    expect(el.evaluate('"\\x41\\101"')).toBe('AA');
+    expect(el.evaluate('"\\d"')).toBe('d');
+    expect(compiledResult(el, '"a\\nb\\tc"')).toBe('a\nb\tc');
+    // regexes therefore need their backslashes doubled, as they do with Symfony
+    expect(el.evaluate('"5" matches "/^\\\\d$/"')).toBe(true);
+    // ...because a single one is gone before the regex sees it: "/^\\d$/" is the pattern /^d$/
+    expect(el.evaluate('"d" matches "/^\\d$/"')).toBe(true);
+    expect(el.evaluate('"5" matches "/^\\d$/"')).toBe(false);
+});
+
+test('division and modulo by zero throw a DivisionByZeroError', () => {
+    const el = new ExpressionLanguage();
+
+    expect(() => el.evaluate('1 / 0')).toThrow(DivisionByZeroError);
+    expect(() => el.evaluate('a % b', {a: 5, b: 0})).toThrow('Modulo by zero.');
+    expect(el.evaluate('0 / 5')).toBe(0);
+    expect(el.evaluate('7 % 3')).toBe(1);
+});
+
+test('logical operators yield booleans', () => {
+    const el = new ExpressionLanguage();
+
+    expect(el.evaluate('0 || 5')).toBe(true);
+    expect(el.evaluate('"a" && "b"')).toBe(true);
+    expect(el.evaluate('"" or null')).toBe(false);
+    expect(el.evaluate('a and b', {a: 1, b: 0})).toBe(false);
+});
+
+test('word operators work right before an opening parenthesis', () => {
+    const el = new ExpressionLanguage();
+
+    expect(el.evaluate('not(true)')).toBe(false);
+    expect(el.evaluate('true and(false)')).toBe(false);
+    expect(el.evaluate('false or(true)')).toBe(true);
+});
+
+// ---------------------------------------------------------------------------------------------------------
+// semantics: Symfony's rules (the default), JavaScript's, or both ("portable")
+// ---------------------------------------------------------------------------------------------------------
+
+describe('semantics', () => {
+    const outcome = (callback) => {
+        try {
+            return callback();
+        } catch (e) {
+            return e.name;
+        }
+    };
+
+    test('are Symfony\'s by default: an expression gives here what it gives in PHP', () => {
+        const el = new ExpressionLanguage();
+
+        expect(el.evaluate('"5" + 1')).toBe(6);
+        expect(el.evaluate('a == b', {a: null, b: false})).toBe(true);
+        expect(el.evaluate('"10" < "9"')).toBe(false);
+        expect(el.evaluate('a ? "yes" : "no"', {a: '0'})).toBe('no');
+        expect(el.evaluate('a ?: "d"', {a: []})).toBe('d');
+        expect(el.evaluate('1 << 40')).toBe(1099511627776);
+        expect(el.evaluate('a === b', {a: [1, 2], b: [1, 2]})).toBe(true);
+        expect(el.evaluate('a in b', {a: [1], b: [[1], [2]]})).toBe(true);
+        expect(el.evaluate('a ~ b', {a: true, b: 1.5})).toBe('11.5');
+        expect(outcome(() => el.evaluate('"abc" + 1'))).toBe('TypeError');
+        expect(outcome(() => el.evaluate('list.length', {list: [1, 2]}))).toBe('Error');
+    });
+
+    test('can be JavaScript\'s', () => {
+        const el = new ExpressionLanguage(null, [], {semantics: 'js'});
+
+        expect(el.evaluate('"5" + 1')).toBe('51');
+        expect(el.evaluate('a == b', {a: null, b: false})).toBe(false);
+        expect(el.evaluate('"10" < "9"')).toBe(true);
+        expect(el.evaluate('a ? "yes" : "no"', {a: '0'})).toBe('yes');
+        expect(el.evaluate('1 << 40')).toBe(256);
+        expect(el.evaluate('a === b', {a: [1, 2], b: [1, 2]})).toBe(false);
+        expect(el.evaluate('a ~ b', {a: true, b: 1.5})).toBe('true1.5');
+        expect(el.evaluate('"abc" + 1')).toBe('abc1');
+        expect(el.evaluate('list.length', {list: [1, 2]})).toBe(2);
+    });
+
+    test('can be both ("portable"): what they agree on is returned, the rest is an error', () => {
+        const el = new ExpressionLanguage(null, [], {semantics: 'portable'});
+
+        expect(el.evaluate('a + b * 2 > 5 and name starts with "A"', {a: 1, b: 3, name: 'Ann'})).toBe(true);
+        expect(el.evaluate('"abc" ~ 1')).toBe('abc1');
+        expect(outcome(() => el.evaluate('"5" + 1'))).toBe('PortabilityError');
+        expect(outcome(() => el.evaluate('a == b', {a: 0, b: ''}))).toBe('PortabilityError');
+        expect(outcome(() => el.evaluate('a ? 1 : 2', {a: '0'}))).toBe('PortabilityError');
+        expect(outcome(() => el.evaluate('a ? 1 : 2', {a: 'x'}))).toBe(1);
+        expect(el.evaluate('a ? 1 : 2', {a: 'x'})).toBe(1);
+        expect(outcome(() => el.evaluate('1 << 40'))).toBe('PortabilityError');
+        expect(outcome(() => el.evaluate('list.length', {list: [1]}))).toBe('Error');
+    });
+
+    test('an unknown one is refused', () => {
+        expect(() => new ExpressionLanguage(null, [], {semantics: 'php'})).toThrow('Unknown semantics "php": use "symfony", "js", "portable".');
+        expect(() => new ExpressionLanguage(null, [], {semantics: 'js'})).not.toThrow();
+        expect(() => new ExpressionLanguage(null, [], {semantics: 'symfony'})).not.toThrow();
+        expect(() => new ExpressionLanguage(null, [], {})).not.toThrow();
+    });
+
+    test('are chosen for one call by a flag, which wins over the option', () => {
+        const symfony = new ExpressionLanguage();
+        const js = new ExpressionLanguage(null, [], {semantics: 'js'});
+        const portable = new ExpressionLanguage(null, [], {semantics: 'portable'});
+
+        expect(symfony.evaluate(symfony.parse('"5" + 1', [], SEMANTICS_JS))).toBe('51');
+        expect(symfony.evaluate('"5" + 1')).toBe(6);
+        expect(js.evaluate(js.parse('"5" + 1', []))).toBe('51');
+        expect(outcome(() => js.evaluate(js.parse('"5" + 1', [], SEMANTICS_PORTABLE)))).toBe('PortabilityError');
+        expect(outcome(() => portable.evaluate(portable.parse('"5" + 1', [], SEMANTICS_JS)))).toBe('51');
+        // the flags of the option other than the semantics are kept
+        const insensitive = new ExpressionLanguage(null, [], {semantics: 'js', caseInsensitiveStringOperators: true});
+        expect(insensitive.evaluate(insensitive.parse('"ABC" contains "b"', [], 0))).toBe(true);
+        expect(insensitive.evaluate(insensitive.parse('"ABC" contains "b"', [], SEMANTICS_PORTABLE))).toBe(true);
+        expect(insensitive.defaultFlags).toBe(CASE_INSENSITIVE_STRING_OPERATORS | SEMANTICS_JS);
+    });
+
+    test('cannot be two at once', () => {
+        const el = new ExpressionLanguage();
+
+        expect(() => el.parse('1 + 1', [], SEMANTICS_JS | SEMANTICS_PORTABLE)).toThrow('SEMANTICS_JS and SEMANTICS_PORTABLE exclude each other.');
+        expect(() => el.parse('1 + 1', [], SEMANTICS_JS | SEMANTICS_PORTABLE)).toThrow(LogicException);
+    });
+
+    test('are part of the parse cache key: the same expression is parsed once per semantics', () => {
+        const cache = new ArrayAdapter();
+        const symfony = new ExpressionLanguage(cache);
+        const js = new ExpressionLanguage(cache, [], {semantics: 'js'});
+
+        expect(symfony.evaluate('"5" + 1')).toBe(6);
+        expect(js.evaluate('"5" + 1')).toBe('51');
+        expect(symfony.evaluate('"5" + 1')).toBe(6);
+        expect(symfony.parse('"5" + 1', [])).not.toBe(js.parse('"5" + 1', []));
+    });
+
+    test('are remembered by a parsed expression, wherever it is evaluated', () => {
+        const parsedAsJs = new ExpressionLanguage(null, [], {semantics: 'js'}).parse('a + b', ['a', 'b']);
+        const restored = ParsedExpression.fromJSON(JSON.stringify(parsedAsJs));
+
+        expect(new ExpressionLanguage().evaluate(parsedAsJs, {a: '5', b: 1})).toBe('51');
+        expect(new ExpressionLanguage().evaluate(restored, {a: '5', b: 1})).toBe('51');
+        expect(restored.getNodes().attributes.semantics).toBe('js');
+        // the default is not written down
+        expect(new ExpressionLanguage().parse('a + b', ['a', 'b']).getNodes().attributes.semantics).toBeUndefined();
+        expect(new ExpressionLanguage().evaluate(ParsedExpression.fromJSON(JSON.stringify(new ExpressionLanguage().parse('a + b', ['a', 'b']))), {a: '5', b: 1})).toBe(6);
+    });
+
+    test('apply to every operator of an expression, not only the first', () => {
+        const symfony = new ExpressionLanguage();
+        const js = new ExpressionLanguage(null, [], {semantics: 'js'});
+        const expression = 'a + 1 == "6" and (b ? "t" : "f") == "f" and not c';
+        const values = {a: '5', b: '0', c: []};
+
+        expect(symfony.evaluate(expression, values)).toBe(true);
+        expect(js.evaluate(expression, values)).toBe(false);
+    });
+
+    test('the compiled code of the default ones needs the runtime, the one of the "js" ones needs nothing', () => {
+        const symfony = new ExpressionLanguage();
+        const js = new ExpressionLanguage(null, [], {semantics: 'js'});
+
+        expect(symfony.compile('a + b', ['a', 'b'])).toBe('__runtime.symfony.add(a, b)');
+        expect(new ExpressionLanguage(null, [], {semantics: 'portable'}).compile('a + b', ['a', 'b'])).toBe('__runtime.portable.add(a, b)');
+        expect(js.compile('a + b', ['a', 'b'])).toBe('(a + b)');
+        expect(new Function('a', 'b', 'return ' + js.compile('a + b', ['a', 'b']) + ';')('5', 1)).toBe('51');
+        expect(compiledResult(symfony, 'a + b', ['a', 'b'], ['5', 1])).toBe(6);
+        expect(() => new Function('a', 'b', 'return ' + symfony.compile('a + b', ['a', 'b']) + ';')('5', 1)).toThrow('__runtime is not defined');
+    });
+
+    test('lint is done with the same flags', () => {
+        const el = new ExpressionLanguage(null, [], {semantics: 'js'});
+
+        expect(() => el.lint('a + b', ['a', 'b'])).not.toThrow();
+        expect(() => el.lint('a + b', ['a'])).toThrow('Variable "b" is not valid');
+    });
+});

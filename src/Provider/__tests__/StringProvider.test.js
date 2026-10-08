@@ -63,7 +63,7 @@ test('strlen evaluate', () => {
 });
 
 test('strlen compile', () => {
-    let el = new ExpressionLanguage(null, [new StringProvider()]);
+    let el = new ExpressionLanguage(null, [new StringProvider()], {semantics: 'js'});
     // Regression check: this used to compile to `strlen(a);` — a bare,
     // undefined function call with a stray semicolon that broke compound
     // expressions like `strlen(a) + 1`.

@@ -1,5 +1,3 @@
-import {addcslashes} from "./lib/addcslashes";
-
 export default class Compiler {
 
     constructor(functions) {
@@ -66,7 +64,10 @@ export default class Compiler {
      * @returns {Compiler}
      */
     string = (value) => {
-        this.source += '"' + addcslashes(value, "\0\t\"\$\\") + '"';
+        // JSON.stringify escapes everything a JavaScript string literal cannot hold raw (quotes, backslashes,
+        // newlines and other control characters) and never uses the octal escapes that strict mode rejects.
+        // The separators U+2028 / U+2029 are escaped too, for engines older than ES2019.
+        this.source += JSON.stringify(String(value)).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
         return this;
     };
 

@@ -10,6 +10,7 @@ import {count} from "locutus/php/array/count";
 import {date} from "locutus/php/datetime/date";
 import {strtotime} from "locutus/php/datetime/strtotime";
 import {arrayIntersectFn} from "./Provider/ArrayProvider";
+import {SEMANTICS} from "./Semantics";
 
 /**
  * Helpers referenced by javascript source produced by ExpressionLanguage#compile()
@@ -24,10 +25,11 @@ import {arrayIntersectFn} from "./Provider/ArrayProvider";
  *   const fn = new Function('__runtime', ...names, el.compile(expr, names));
  *   fn(compileRuntime, ...values);
  *
- * Expressions that only use core syntax (arithmetic, comparisons, in/not in,
- * .., custom self-contained functions registered via register()/addFunction())
- * don't need this — it's only required when a provider function appears in
- * the expression being compiled.
+ * The operators (`+`, `==`, `&&`, `in`, ...) of the "symfony" and "portable"
+ * semantics, the default, are calls to `__runtime.symfony` / `__runtime.portable`
+ * too. Only the "js" semantics compiles to code that needs nothing: core syntax
+ * (arithmetic, comparisons, in/not in, .., custom self-contained functions
+ * registered via register()/addFunction()) is then fully self-contained.
  */
 const compileRuntime = {
     strtolower,
@@ -41,7 +43,11 @@ const compileRuntime = {
     count,
     array_intersect: (...args) => arrayIntersectFn.getEvaluator()(null, ...args),
     date,
-    strtotime
+    strtotime,
+    // the operators of the "symfony" and "portable" semantics (the default ones), which compile() calls
+    symfony: SEMANTICS.symfony,
+    portable: SEMANTICS.portable,
+    js: SEMANTICS.js
 };
 
 export default compileRuntime;

@@ -169,25 +169,30 @@ test('fromJSON restores the is_null_coalesce flag on a nested GetAttrNode', () =
     expect(restoredGetAttr.evaluate(el.functions, values)).toBeNull();
 });
 
-test('fromJSON restores the is_short_circuited flag and preserves short-circuit chaining', () => {
+test('fromJSON preserves short-circuit chaining and null-safe array access', () => {
     let el = new ExpressionLanguage();
-    let values = {a: null};
-    let parsed = el.parse('a?.b.c', Object.keys(values));
 
-    let originalResult = el.evaluate(parsed, values);
-    expect(originalResult).toBeNull();
+    for (const [expression, values, expected] of [
+        ['a?.b.c', {a: null}, null],
+        ['a?.[0].c', {a: null}, null],
+        ['a?.[0]', {a: [5]}, 5],
+    ]) {
+        let parsed = el.parse(expression, Object.keys(values));
+        let restored = ParsedExpression.fromJSON(JSON.stringify(parsed));
 
-    let outerOriginal = parsed.getNodes();
-    let innerOriginal = outerOriginal.nodes.node;
-    expect(innerOriginal.attributes.is_short_circuited).toBe(true);
+        expect(el.evaluate(parsed, values)).toBe(expected);
+        expect(el.evaluate(restored, values)).toBe(expected);
+        expect(restored.getNodes().dump()).toBe(parsed.getNodes().dump());
+    }
+});
 
+test('fromJSON restores the case-insensitive flag of the string operators', () => {
+    let el = new ExpressionLanguage(null, [], {caseInsensitiveStringOperators: true});
+    let parsed = el.parse('a contains "B"', ['a']);
     let restored = ParsedExpression.fromJSON(JSON.stringify(parsed));
-    let outerRestored = restored.getNodes();
-    let innerRestored = outerRestored.nodes.node;
 
-    expect(innerRestored).toBeInstanceOf(GetAttrNode);
-    expect(innerRestored.attributes.is_short_circuited).toBe(true);
-    expect(el.evaluate(restored, values)).toBeNull();
+    expect(restored.getNodes().attributes.case_insensitive).toBe(true);
+    expect(new ExpressionLanguage().evaluate(restored, {a: 'abc'})).toBe(true);
 });
 
 test('fromJSON accepts a plain object in addition to a JSON string', () => {
