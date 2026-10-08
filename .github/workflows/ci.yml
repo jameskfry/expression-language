@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# a new push to a pull request replaces the run in progress
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The commit of symfony/expression-language the PHP dump is checked against. It is pinned so that a change upstream cannot turn
+  # this workflow red by itself: move it on purpose (and regenerate the fixtures, see "Contributing" in the README).
+  SYMFONY_EXPRESSION_LANGUAGE_SHA: 4ac922a1172448c08599fa275c4965e0418ff664
+
+jobs:
+  test:
+    name: Tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: npm test
+
+  coverage:
+    # Tests run again with the sources instrumented: this catches code that breaks when it is (the functions that compile()
+    # serialises with Function#toString(), for instance, must not hold the counters of a coverage run).
+    name: Tests with coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: npm run test:coverage -- --coverageReporters=text-summary --coverageReporters=text
+
+  build:
+    # The sources are tested above; this runs what is published: the Babel build (lib/) and the minified browser bundle (dist/).
+    name: Build and smoke-test the bundles
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: npm run build:all
+
+      - run: npm run test:build
+
+  types:
+    name: TypeScript definitions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: npm run test:types
+
+  php:
+    # The PHP that dumpCompiled() generates has to be accepted by Symfony's own CompiledExpressionLanguage, and behave like the file
+    # Symfony dumps itself. Needs the PHP of the runner and a checkout of the component (the Lexer, Parser and Nodes: no Composer).
+    name: PHP dump against Symfony's loader
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Fetch Symfony's ExpressionLanguage at the pinned commit
+        run: |
+          git init --quiet "$RUNNER_TEMP/symfony-expression-language"
+          cd "$RUNNER_TEMP/symfony-expression-language"
+          git remote add origin https://github.com/symfony/expression-language.git
+          git fetch --quiet --depth 1 origin "$SYMFONY_EXPRESSION_LANGUAGE_SHA"
+          git checkout --quiet FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$SYMFONY_EXPRESSION_LANGUAGE_SHA"
+
+      - name: Make sure PHP is there
+        run: |
+          command -v php >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq php-cli; }
+          php --version
+
+      - name: Evaluate the dumped PHP with Symfony's loader
+        run: npm test -- CompiledExpressionLanguage
+        env:
+          SYMFONY_EXPRESSION_LANGUAGE_PATH: ${{ runner.temp }}/symfony-expression-language
+
+  audit:
+    # Only what is installed by the people who use the package. The development tools are not in scope here: they have advisories
+    # that no release fixes yet (see the Dependabot alerts), and they never reach a user.
+    name: Audit of the runtime dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm audit --omit=dev --audit-level=high
+
+  ci:
+    # The one check to require in the branch protection rules: the names of the matrix jobs above can change.
+    name: CI
+    if: ${{ always() }}
+    needs: [test, coverage, build, types, php, audit]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job succeeded
+        run: test "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "false"

@@ -14,7 +14,10 @@
     "build:browser": "rollup -c && cp types/index.d.ts dist/index.d.ts",
     "build:all": "npm run build && npm run build:browser",
     "prepublishOnly": "npm run build:all",
-    "test": "jest"
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:types": "tsc --noEmit --strict --target es2020 --moduleResolution node --esModuleInterop --skipLibCheck types/test-types.ts",
+    "test:build": "node scripts/smoke-build.cjs lib/index.js dist/expression-language.min.js"
   },
   "jest": {
     "testPathIgnorePatterns": [
@@ -47,6 +50,10 @@
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-terser": "^1.0.0",
     "jest": "^30.0.5",
-    "rollup": "^4.0.0"
+    "rollup": "^4.0.0",
+    "typescript": "~5.6.3"
+  },
+  "overrides": {
+    "js-yaml": "^4.1.0"
   }
 }
