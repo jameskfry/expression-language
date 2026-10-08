@@ -10,6 +10,7 @@ import LogicException from "../LogicException";
  *
  * Only own properties are followed, so inherited members ("constructor", "__proto__", ...) can never be reached.
  */
+/* istanbul ignore next: serialised with Function#toString(), so it must not hold the counters of a coverage run */
 function resolveAllowedConstant(root, name, regexpSource, label) {
     if (typeof name !== 'string') {
         throw new Error(label + ' name must be a string.');

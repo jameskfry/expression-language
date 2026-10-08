@@ -15,6 +15,7 @@ import SyntaxError from "../SyntaxError";
  * @returns {RegExp}
  * @throws {Error} with a message starting with "Regexp ... is not valid"
  */
+/* istanbul ignore next: serialised with Function#toString(), so it must not hold the counters of a coverage run */
 export function toRegExp(pattern) {
     var invalid = function (reason) {
         var e = new Error('Regexp "' + pattern + '" passed to "matches" is not valid: ' + reason);
