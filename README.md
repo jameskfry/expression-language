@@ -552,6 +552,53 @@ some 1,700 ns uncompiled).
 
 `'portable'` is a safety net for what the matrix covers (the operators above); it cannot know about the differences listed below.
 
+## Auditing your expressions for portability
+
+If the same expressions run on a server and in a browser, you want to know which of them depend on the rules of a language.
+`scripts/portability-audit.cjs` tells you, from the expressions alone: it needs no data.
+
+```bash
+npm run build                                       # the script audits the build in lib/ (or --lib <path>)
+npm run portability -- --extract ./src ./config     # find the expressions in your source code
+npm run portability -- rules.json                   # ...or give a list: a JSON array of strings, or one expression per line
+npm run portability -- rules.txt --fail-on ordinary # exit with 1 when an expression is not portable, to use it in CI
+```
+
+`--extract` reads PHP attributes and annotations (`#[IsGranted(expression: ...)]`, `@Security(...)`, `new Expression(...)`, `Assert\Expression`),
+YAML and XML configuration (`security:`, `condition:`, `guard:`, `@=...`) and `evaluate()` / `compile()` calls in JavaScript.
+
+Every variable, property chain and function call of an expression (`object.getOwner()`, `is_granted('X')`) is replaced by a placeholder whose type
+is inferred from how it is used (an operand of `<` is a number, the left side of `matches` a string...). The expression is then evaluated
+with the `'portable'` semantics on values of three kinds:
+
+| Regime | Values | What a failure means |
+|---|---|---|
+| `ordinary` | typical values of the right type | the expression is not portable *whatever your data is like* (for instance two objects compared with `==`) |
+| `edge` | edge values of the right type: `0`, `""`, `"0"`, `[]`, `null` | it is portable as long as such a value never shows up |
+| `mixed` | values of the wrong type: numeric strings, `null`... | it is portable as long as the types are right |
+
+```
+Share of the audited expressions whose operators mean the same in PHP and in JavaScript, whatever the sample:
+  ordinary   80.7%  portable (247/306)   typical values of the right type
+  edge       72.5%  portable (222/306)   edge values of the right type (0, "", "0", [], null...)
+  mixed       8.5%  portable (26/306)   values of the wrong type (numeric strings, null...)
+
+NOT PORTABLE with ordinary values: 59. Causes (first failing sample of each):
+    27  == on two objects with equal contents (distinct instances)
+  ...
+  is_granted('ROLE_USER') and object.getOwner() == user
+      "==" is not portable: with {"id":7} and {"id":7}, PHP gives true and JavaScript gives false.
+```
+
+(That is the report for 306 expressions found in open-source Symfony projects.) The report also says how many expressions would give another result with the rules of
+2.x (JavaScript's) than with the default ones, which is what to look at before upgrading.
+
+Options: `--samples <n>`, `--seed <n>` (the same seed gives the same report), `--limit <n>`, `--json <file>`, and `--php-symfony <dir>`, which also evaluates every sample with
+Symfony's own PHP (needs `php` and a checkout of `symfony/expression-language`, see *Contributing*) and lists the answers that differ. `--help` shows them all.
+
+What it can and cannot tell you: it shows which operators of an expression can give another result in PHP and in JavaScript, and for which kind of value.
+It does not know your data, nor what your functions return (they are placeholders); a `mixed` failure is a stress test, not a prediction.
+
 ## Known differences from Symfony
 
 JavaScript and PHP are different languages, so a few things cannot be identical whatever the semantics:

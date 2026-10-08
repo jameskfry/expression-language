@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `scripts/portability-audit.cjs` (`npm run portability`) finds the expressions of a code base and tells which ones do not mean the same thing in PHP and in JavaScript, and
+  can compare the answers of this library with Symfony's own PHP for them (see the README).
+
 ## 3.0.0
 
 This release brings the library back in line with Symfony's ExpressionLanguage, closes a hole that let expressions read
