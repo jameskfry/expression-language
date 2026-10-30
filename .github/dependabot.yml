@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Babel 8 cannot be installed next to @rollup/plugin-babel (its latest release only supports @babel/core 7), and it needs
+      # Node 22.18+, which the CI matrix does not require yet. Remove this once both are sorted out.
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
     groups:
       # browserslist and the data packages it depends on are bumped together, in one pull request
       browserslist:
