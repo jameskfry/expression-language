@@ -64,7 +64,7 @@
     "@rollup/plugin-terser": "^1.0.0",
     "jest": "^30.0.5",
     "rollup": "^4.0.0",
-    "typescript": "~5.6.3"
+    "typescript": "~7.0.2"
   },
   "overrides": {
     "js-yaml": "^4.1.0"
