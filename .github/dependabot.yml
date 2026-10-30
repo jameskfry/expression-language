@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # browserslist and the data packages it depends on are bumped together, in one pull request
+      browserslist:
+        patterns:
+          - browserslist
+          - baseline-browser-mapping
+          - caniuse-lite
+          - electron-to-chromium
+          - node-releases
+          - update-browserslist-db
+      dev-dependencies:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"
