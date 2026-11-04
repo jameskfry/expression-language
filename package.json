@@ -27,7 +27,7 @@
     "prepublishOnly": "npm run build:all",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "test:types": "tsc --noEmit --strict --target es2020 --moduleResolution node --esModuleInterop --skipLibCheck types/test-types.ts",
+    "test:types": "tsc -p tsconfig.json",
     "test:build": "node scripts/smoke-build.cjs lib/index.js dist/expression-language.min.js",
     "test:package": "node scripts/check-package.cjs",
     "portability": "node bin/portability-audit.cjs"
