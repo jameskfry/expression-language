@@ -24,6 +24,10 @@ export default class ConstantNode extends Node {
         return this.attributes.value;
     };
 
+    evaluateAsync = async (functions, values) => {
+        return this.attributes.value;
+    };
+
     toArray = () => {
         let array = [],
             value = this.attributes.value;

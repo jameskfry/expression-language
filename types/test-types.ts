@@ -1,4 +1,14 @@
-import ExpressionLanguage from "./index";
+import ExpressionLanguage, {
+  ExpressionFunction,
+  BasicProvider,
+  MathProvider,
+  CompiledExpressionLanguage,
+} from "./index";
+
+const namedEl = new ExpressionLanguage();
+const namedFn = new ExpressionFunction("test", () => "test", () => "test");
+const namedProv = new BasicProvider();
+const mathProv = new MathProvider();
 
 // ============================================================================
 // ExpressionLanguage Main Class Tests
@@ -31,6 +41,11 @@ const result2: unknown = el1.evaluate("x + y", { x: 1, y: 2 });
 const result3: unknown = el1.evaluate(
   new ExpressionLanguage.Expression("1 + 1")
 );
+const typedNum: number = el1.evaluate<number>("1 + 1");
+const typedBool: boolean = el1.evaluate<boolean>("x > 0", { x: 1 });
+const asyncResult1: Promise<unknown> = el1.evaluateAsync("1 + 1");
+const asyncResult2: Promise<number> = el1.evaluateAsync<number>("1 + 1");
+const asyncResult3: Promise<boolean> = el1.evaluateAsync<boolean>("x > 0", { x: 1 });
 
 // Method tests - parse
 const parsed1: ExpressionLanguage.ParsedExpression = el1.parse("1 + 1", []);
@@ -49,6 +64,15 @@ el1.lint("1 + 1");
 el1.lint("x + y", ["x", "y"]);
 el1.lint("x + y", null);
 el1.lint("x + y", ["x", "y"], 0);
+
+// Method tests - getVariables & getFunctions
+const vars1: string[] = el1.getVariables("a + b * c");
+const fns1: string[] = el1.getFunctions("min(a, b) + max(c, d)");
+const vars2: string[] = parsed2.getVariables();
+const fns2: string[] = parsed2.getFunctions();
+parsed2.walk((node, parent, key) => {
+  const name: string = node.name;
+});
 
 // Method tests - register
 el1.register(
@@ -401,10 +425,13 @@ const syntaxError4 = new ExpressionLanguage.SyntaxError(
 
 syntaxError1.name satisfies "SyntaxError";
 syntaxError1.cursor satisfies number;
+syntaxError1.line satisfies number;
+syntaxError1.column satisfies number;
 syntaxError1.expression satisfies string | undefined;
 syntaxError1.subject satisfies string | undefined;
 syntaxError1.proposals satisfies string[] | undefined;
 
+const prettyStr: string = syntaxError1.formatPretty();
 const errorStr: string = syntaxError1.toString();
 
 // ============================================================================

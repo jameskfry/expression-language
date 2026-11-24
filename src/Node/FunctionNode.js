@@ -28,6 +28,18 @@ export default class FunctionNode extends Node {
         return functions[this.attributes.name]['evaluator'].apply(null, _arguments);
     };
 
+    evaluateAsync = async (functions, values) => {
+        let _arguments = [values];
+        for (let node of Object.values(this.nodes.fnArguments.nodes)) {
+            const evaluated = node.evaluateAsync ? await node.evaluateAsync(functions, values) : node.evaluate(functions, values);
+            _arguments.push(await evaluated);
+        }
+
+        const fn = functions[this.attributes.name]['evaluator'];
+        const result = fn.apply(null, _arguments);
+        return await result;
+    };
+
     toArray = () => {
         let array = [];
         array.push(this.attributes.name);

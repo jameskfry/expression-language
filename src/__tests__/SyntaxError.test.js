@@ -38,3 +38,31 @@ test('trailing dots of the message are not repeated before the position', () => 
 test('the position defaults to 0 and the expression to nothing', () => {
     expect(new SyntaxError('Oops').message).toBe('Oops around position 0.');
 });
+
+test('computes line and column for single-line expressions', () => {
+    const error = new SyntaxError('Unexpected token', 8, 'a + b * c');
+    expect(error.line).toBe(1);
+    expect(error.column).toBe(9);
+});
+
+test('computes line and column for multi-line expressions', () => {
+    const multiline = 'a + b\n* c\n+ d';
+    // cursor at '* c' (position 6 is '*')
+    const error = new SyntaxError('Unexpected token', 6, multiline);
+    expect(error.line).toBe(2);
+    expect(error.column).toBe(1);
+});
+
+test('formatPretty renders a formatted code frame with line and caret pointer', () => {
+    const error = new SyntaxError('Variable "nam" is not valid', 1, 'nam + 1', 'nam', ['name']);
+    const pretty = error.formatPretty();
+
+    expect(pretty).toContain('Variable "nam" is not valid around position 1 for expression `nam + 1`. Did you mean "name"?');
+    expect(pretty).toContain('1 | nam + 1');
+    expect(pretty).toContain('  |  ^');
+});
+
+test('formatPretty returns plain message when no expression is provided', () => {
+    const error = new SyntaxError('Oops', 5);
+    expect(error.formatPretty()).toBe(error.message);
+});

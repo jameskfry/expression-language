@@ -125,6 +125,36 @@ export default class CompiledExpressionLanguage {
     };
 
     /**
+     * Evaluates an expression asynchronously, awaiting any promises returned by
+     * custom functions, object methods, property getters, or variable values.
+     *
+     * @param {Expression|string} expression
+     * @param {Object} values
+     * @returns {Promise<*>}
+     */
+    evaluateAsync = async (expression, values = {}) => {
+        const compiled = isParsed(expression) ? undefined : this.compiledExpressions.get(String(expression));
+        if (undefined === compiled) {
+            return this.expressionLanguage.evaluateAsync(expression, values);
+        }
+
+        const [evaluator, variables] = compiled;
+
+        for (const [name, cursor] of variables) {
+            if (null === cursor) {
+                break;
+            }
+
+            if (!hasOwn(values, name)) {
+                return this.expressionLanguage.evaluateAsync(expression, values);
+            }
+        }
+
+        const res = evaluator(values, this.expressionLanguage.functions, CompileRuntime);
+        return await res;
+    };
+
+    /**
      * Validates the syntax of an expression, without parsing it when it was compiled.
      */
     lint = (expression, names = [], flags = 0) => {
@@ -160,6 +190,32 @@ export default class CompiledExpressionLanguage {
                 throw new SyntaxError(`Variable "${name}" is not valid`, cursor, String(expression), name, names);
             }
         }
+    };
+
+    /**
+     * Extracts all unique variable names read by an expression.
+     *
+     * @param {Expression|string} expression
+     * @returns {string[]}
+     */
+    getVariables = (expression) => {
+        const compiled = isParsed(expression) ? undefined : this.compiledExpressions.get(String(expression));
+        if (undefined !== compiled) {
+            const [, variables] = compiled;
+            return variables.map(([name]) => name);
+        }
+
+        return this.expressionLanguage.getVariables(expression);
+    };
+
+    /**
+     * Extracts all unique function names called by an expression.
+     *
+     * @param {Expression|string} expression
+     * @returns {string[]}
+     */
+    getFunctions = (expression) => {
+        return this.expressionLanguage.getFunctions(expression);
     };
 
     /**

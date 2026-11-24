@@ -22,7 +22,7 @@ const manifest = require(path.join(root, 'package.json'));
 
 const MUST_CONTAIN = [
     'package.json', 'README.md', 'CHANGELOG.md', 'UPGRADE-3.0.md', 'LICENSE.txt',
-    'lib/index.js', 'dist/expression-language.js', 'dist/expression-language.min.js', 'dist/index.d.ts',
+    'lib/index.js', 'dist/expression-language.js', 'dist/expression-language.min.js', 'dist/index.mjs', 'dist/index.d.ts',
     // the PHP helper is run by the command, it has to travel with it
     'bin/portability-audit.cjs', 'bin/portability-audit.php',
 ];
@@ -79,6 +79,12 @@ try {
     const node = (code) => run(process.execPath, ['-e', code], {cwd: project});
     const entry = node(`const l = require('${manifest.name}'); process.stdout.write(String(l.ExpressionLanguage && new l.ExpressionLanguage().evaluate('1 + 2')))`);
     check(entry.status === 0 && entry.stdout === '3', 'require() of the package works and evaluates an expression');
+
+    const esm = node(`import('${manifest.name}').then(({ ExpressionLanguage, default: DefaultEL }) => {
+        const EL = ExpressionLanguage || DefaultEL;
+        process.stdout.write(String(new EL().evaluate('1 + 2')));
+    })`);
+    check(esm.status === 0 && esm.stdout === '3', 'import() of the package (ESM) works and evaluates an expression');
 
     const bundle = node(`const l = require('${manifest.name}/dist/expression-language.min.js'); process.stdout.write(String(new l.ExpressionLanguage().evaluate('1 + 2')))`);
     check(bundle.status === 0 && bundle.stdout === '3', 'the minified browser bundle works');

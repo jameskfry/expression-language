@@ -62,5 +62,32 @@ export default [
         plugins: ['@babel/plugin-proposal-class-properties']
       })
     ]
+  },
+  // ESM build (for Node.js ESM, bundlers, and modern runtimes)
+  {
+    input: 'src/index.js',
+    output: {
+      file: 'dist/index.mjs',
+      format: 'es',
+      sourcemap: true
+    },
+    plugins: [
+      nodeResolve({
+        browser: false
+      }),
+      commonjs(),
+      babel({
+        babelHelpers: 'bundled',
+        exclude: 'node_modules/**',
+        presets: [
+          ['@babel/preset-env', {
+            targets: {
+              node: '18'
+            }
+          }]
+        ],
+        plugins: ['@babel/plugin-proposal-class-properties']
+      })
+    ]
   }
 ];

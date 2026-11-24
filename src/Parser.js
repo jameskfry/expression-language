@@ -13,6 +13,7 @@ import ArgumentsNode from "./Node/ArgumentsNode";
 import GetAttrNode from "./Node/GetAttrNode";
 import NullCoalesceNode from "./Node/NullCoalesceNode";
 import NullCoalescedNameNode from "./Node/NullCoalescedNameNode";
+import {warnDeprecatedNullLint} from "./lib/deprecation";
 
 
 export const OPERATOR_LEFT = 1;
@@ -128,7 +129,7 @@ export default class Parser {
 
     lint = (tokenStream, names=[], flags=0) => {
         if (null === names) {
-            console.log("Deprecated: passing \"null\" as the second argument of lint is deprecated, pass IGNORE_UNKNOWN_VARIABLES instead as the third argument");
+            warnDeprecatedNullLint();
 
             flags |= IGNORE_UNKNOWN_VARIABLES;
             names = [];

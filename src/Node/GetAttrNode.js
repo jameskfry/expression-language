@@ -157,6 +157,94 @@ export default class GetAttrNode extends Node {
         }
     };
 
+    evaluateAsync = (functions, values) => {
+        return this.evaluateChainAsync(functions, values, {shortCircuited: false});
+    };
+
+    evaluateChainAsync = async (functions, values, state) => {
+        const node = this.nodes.node;
+        const rawValue = node instanceof GetAttrNode
+            ? await node.evaluateChainAsync(functions, values, state)
+            : (node.evaluateAsync ? await node.evaluateAsync(functions, values) : node.evaluate(functions, values));
+        const value = await rawValue;
+
+        switch(this.attributes.type) {
+            case GetAttrNode.PROPERTY_CALL: {
+                if (null === value && (this.nodes.attribute.isNullSafe || this.attributes.is_null_coalesce)) {
+                    state.shortCircuited = true;
+                    return null;
+                }
+                if (null === value && state.shortCircuited) {
+                    return null;
+                }
+
+                if (null === value || typeof value !== 'object' || this.isArrayInPhp(value)) {
+                    throw new Error(`Unable to get property "${dumpOf(this.nodes.attribute)}" of non-object "${dumpOf(node)}".`);
+                }
+
+                const property = this.nodes.attribute.attributes.value;
+                assertAccessible(value, property);
+
+                if (this.attributes.is_null_coalesce) {
+                    return (await value[property]) ?? null;
+                }
+
+                return await value[property];
+            }
+            case GetAttrNode.METHOD_CALL: {
+                if (null === value && this.nodes.attribute.isNullSafe) {
+                    state.shortCircuited = true;
+                    return null;
+                }
+                if (null === value && state.shortCircuited) {
+                    return null;
+                }
+
+                if (null === value || typeof value !== 'object' || this.isArrayInPhp(value)) {
+                    throw new Error(`Unable to call method "${dumpOf(this.nodes.attribute)}" of non-object "${dumpOf(node)}".`);
+                }
+
+                const method = this.nodes.attribute.attributes.value;
+                assertAccessible(value, method);
+                if (typeof value[method] !== 'function') {
+                    throw new Error(`Unable to call method "${method}" of object "${typeOf(value)}".`);
+                }
+
+                const fnArgs = this.nodes.fnArguments;
+                const evaluatedArgs = fnArgs.evaluateAsync
+                    ? await fnArgs.evaluateAsync(functions, values)
+                    : fnArgs.evaluate(functions, values);
+
+                return await value[method].apply(value, await evaluatedArgs);
+            }
+            case GetAttrNode.ARRAY_CALL: {
+                if (null === value && (this.attributes.is_null_safe || state.shortCircuited)) {
+                    state.shortCircuited = true;
+                    return null;
+                }
+
+                if (null === value && this.attributes.is_null_coalesce) {
+                    return null;
+                }
+
+                if (null === value || typeof value !== 'object') {
+                    throw new Error(`Unable to get an item of non-array "${dumpOf(node)}".`);
+                }
+
+                const attrNode = this.nodes.attribute;
+                const rawKey = attrNode.evaluateAsync ? await attrNode.evaluateAsync(functions, values) : attrNode.evaluate(functions, values);
+                const key = await rawKey;
+                assertAccessible(value, key);
+
+                if (this.attributes.is_null_coalesce) {
+                    return (await value[key]) ?? null;
+                }
+
+                return await value[key];
+            }
+        }
+    };
+
     /**
      * In PHP an array is not an object, so it has no properties nor methods (JavaScript's `list.length`, `list.includes()`).
      */

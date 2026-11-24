@@ -43,6 +43,20 @@ export default class ConditionalNode extends Node {
         return this.nodes.expr3.evaluate(functions, values);
     };
 
+    evaluateAsync = async (functions, values) => {
+        const condNode = this.nodes.expr1;
+        const condRaw = condNode.evaluateAsync ? await condNode.evaluateAsync(functions, values) : condNode.evaluate(functions, values);
+        if (getSemantics(this.attributes.semantics).truthy(await condRaw)) {
+            const trueNode = this.nodes.expr2;
+            const trueRaw = trueNode.evaluateAsync ? await trueNode.evaluateAsync(functions, values) : trueNode.evaluate(functions, values);
+            return await trueRaw;
+        }
+
+        const falseNode = this.nodes.expr3;
+        const falseRaw = falseNode.evaluateAsync ? await falseNode.evaluateAsync(functions, values) : falseNode.evaluate(functions, values);
+        return await falseRaw;
+    };
+
     toArray = () => {
         return ['(', this.nodes.expr1, ' ? ', this.nodes.expr2, ' : ', this.nodes.expr3, ')'];
     };

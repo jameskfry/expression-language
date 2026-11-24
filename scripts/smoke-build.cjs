@@ -77,39 +77,43 @@ function checksFor(lib) {
         'CompiledExpressionLanguage: PHP dump': () => /return \(\$a \+ 1\.0\);/.test(new lib.CompiledExpressionLanguage(new lib.ExpressionLanguage()).dumpCompiled(['a + 1.0'], {target: 'php'})),
         'public exports': () => [
             'ExpressionLanguage', 'ConstantFunctionProvider', 'CompiledExpressionLanguage', 'PhpCompiler', 'CompileRuntime',
-            'PortabilityError', 'DivisionByZeroError', 'LogicException', 'SyntaxError',
+            'MathProvider', 'PortabilityError', 'DivisionByZeroError', 'LogicException', 'SyntaxError',
             'CASE_INSENSITIVE_STRING_OPERATORS', 'SEMANTICS_JS', 'SEMANTICS_PORTABLE',
         ].every((name) => name in lib),
     };
 }
 
-let failed = 0;
-for (const target of targets) {
-    const file = path.resolve(target);
-    console.log(`\n${target}`);
+const { pathToFileURL } = require('url');
 
-    let lib;
-    try {
-        lib = require(file);
-    } catch (e) {
-        console.log(`  FAIL could not be loaded: ${e.message}`);
-        failed++;
-        continue;
-    }
+(async () => {
+    let failed = 0;
+    for (const target of targets) {
+        const file = path.resolve(target);
+        console.log(`\n${target}`);
 
-    for (const [name, check] of Object.entries(checksFor(lib))) {
-        let ok = false;
+        let lib;
         try {
-            ok = check();
+            lib = target.endsWith('.mjs') ? await import(pathToFileURL(file).href) : require(file);
         } catch (e) {
-            console.log(`  threw: ${e.message}`);
-        }
-        if (!ok) {
+            console.log(`  FAIL could not be loaded: ${e.message}`);
             failed++;
+            continue;
         }
-        console.log(`  ${ok ? 'PASS' : 'FAIL'} ${name}`);
-    }
-}
 
-console.log(failed ? `\n${failed} check(s) failed.` : '\nAll checks passed.');
-process.exit(failed ? 1 : 0);
+        for (const [name, check] of Object.entries(checksFor(lib))) {
+            let ok = false;
+            try {
+                ok = check();
+            } catch (e) {
+                console.log(`  threw: ${e.message}`);
+            }
+            if (!ok) {
+                failed++;
+            }
+            console.log(`  ${ok ? 'PASS' : 'FAIL'} ${name}`);
+        }
+    }
+
+    console.log(failed ? `\n${failed} check(s) failed.` : '\nAll checks passed.');
+    process.exit(failed ? 1 : 0);
+})();

@@ -64,6 +64,32 @@ export default class ArrayNode extends Node {
         return result;
     };
 
+    evaluateAsync = async (functions, values) => {
+        let result;
+        if (this.type === 'Array') {
+            result = [];
+            for (let pair of this.getKeyValuePairs()) {
+                const val = pair.value.evaluateAsync ? await pair.value.evaluateAsync(functions, values) : pair.value.evaluate(functions, values);
+                result.push(await val);
+            }
+        }
+        else {
+            result = {};
+            for (let pair of this.getKeyValuePairs()) {
+                const k = pair.key.evaluateAsync ? await pair.key.evaluateAsync(functions, values) : pair.key.evaluate(functions, values);
+                const v = pair.value.evaluateAsync ? await pair.value.evaluateAsync(functions, values) : pair.value.evaluate(functions, values);
+                Object.defineProperty(result, await k, {
+                    value: await v,
+                    enumerable: true,
+                    writable: true,
+                    configurable: true,
+                });
+            }
+        }
+
+        return result;
+    };
+
     toArray = () => {
         let value = {};
         for (let pair of this.getKeyValuePairs()) {

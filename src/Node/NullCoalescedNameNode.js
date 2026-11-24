@@ -15,6 +15,10 @@ export default class NullCoalescedNameNode extends Node {
         return null;
     }
 
+    evaluateAsync = async (functions, values) => {
+        return null;
+    }
+
     toArray = () => {
         return [this.attributes.name + " ?? null"];
     }

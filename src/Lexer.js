@@ -52,7 +52,7 @@ function extractName(expression, cursor) {
 }
 
 export function tokenize(expression) {
-    expression = expression.replace(/\r|\n|\t|\v|\f/g, ' ');
+    expression = String(expression).replace(/\r|\n|\t|\v|\f/g, ' ');
     let cursor = 0,
         tokens = [],
         brackets = [],

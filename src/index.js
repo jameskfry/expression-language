@@ -11,6 +11,7 @@ import BasicProvider from "./Provider/BasicProvider";
 import StringProvider from "./Provider/StringProvider";
 import ArrayProvider from "./Provider/ArrayProvider";
 import DateProvider from "./Provider/DateProvider";
+import MathProvider from "./Provider/MathProvider";
 import ConstantFunctionProvider from "./Provider/ConstantFunctionProvider";
 import defaultCustomFunctions from "./defaultCustomFunctions";
 import CompileRuntime from "./CompileRuntime";
@@ -47,6 +48,7 @@ export {
     StringProvider,
     ArrayProvider,
     DateProvider,
+    MathProvider,
     ConstantFunctionProvider,
     defaultCustomFunctions,
     CompileRuntime,

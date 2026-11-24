@@ -34,10 +34,22 @@ declare class ExpressionLanguage {
    * @param values An object of values
    * @returns The result of the evaluation of the expression
    */
-  evaluate(
+  evaluate<T = unknown>(
     expression: Expression | string,
     values?: Record<string, unknown>
-  ): unknown;
+  ): T;
+
+  /**
+   * Evaluates an expression asynchronously, awaiting any promises returned by
+   * custom functions, object methods, property getters, or variable values.
+   * @param expression The expression to evaluate
+   * @param values An object of values
+   * @returns A promise resolving to the result of the evaluation
+   */
+  evaluateAsync<T = unknown>(
+    expression: Expression | string,
+    values?: Record<string, unknown>
+  ): Promise<T>;
 
   /**
    * Parses an expression
@@ -63,6 +75,18 @@ declare class ExpressionLanguage {
     names?: VariableName[] | null,
     flags?: number
   ): void;
+
+  /**
+   * Extracts all unique variable names read by an expression, in order of appearance.
+   * @param expression The expression to inspect
+   */
+  getVariables(expression: Expression | string): string[];
+
+  /**
+   * Extracts all unique function names called by an expression, in order of appearance.
+   * @param expression The expression to inspect
+   */
+  getFunctions(expression: Expression | string): string[];
 
   /**
    * Registers a function
@@ -117,6 +141,7 @@ declare namespace ExpressionLanguage {
     StringProvider,
     ArrayProvider,
     DateProvider,
+    MathProvider,
     ConstantFunctionProvider,
     defaultCustomFunctions,
     // Additional exports
@@ -421,15 +446,21 @@ declare class CompiledExpressionLanguage {
     names?: VariableName[],
     flags?: number
   ): ParsedExpression;
-  evaluate(
+  evaluate<T = unknown>(
     expression: Expression | string,
     values?: Record<string, unknown>
-  ): unknown;
+  ): T;
+  evaluateAsync<T = unknown>(
+    expression: Expression | string,
+    values?: Record<string, unknown>
+  ): Promise<T>;
   lint(
     expression: Expression | string,
     names?: VariableName[],
     flags?: number
   ): void;
+  getVariables(expression: Expression | string): string[];
+  getFunctions(expression: Expression | string): string[];
   register(
     name: string,
     compiler: CompilerFunction,
@@ -522,6 +553,10 @@ declare class DateProvider extends AbstractProvider {
   getFunctions(): ExpressionFunction[];
 }
 
+declare class MathProvider extends AbstractProvider {
+  getFunctions(): ExpressionFunction[];
+}
+
 /**
  * Provides the constant() and enum() functions, restricted to a list of allowed constants.
  *
@@ -567,6 +602,19 @@ declare class ParsedExpression extends Expression {
   constructor(expression: string, nodes: Node);
   nodes: Node;
   getNodes(): Node;
+  walk(
+    visitor: (
+      node: Node,
+      parent: Node | null,
+      key: string | number | null
+    ) => boolean | void
+  ): void;
+  getVariables(): string[];
+  getFunctions(): string[];
+  evaluateAsync<T = unknown>(
+    functions: Record<string, FunctionDefinition>,
+    values: Record<string, unknown>
+  ): Promise<T>;
 
   /**
    * Reconstructs a ParsedExpression from a JSON representation
@@ -623,11 +671,22 @@ declare class Node {
   attributes: Record<string, unknown>;
 
   toString(): string;
+  walk(
+    visitor: (
+      node: Node,
+      parent: Node | null,
+      key: string | number | null
+    ) => boolean | void
+  ): void;
   compile(compiler: Compiler): void;
-  evaluate(
+  evaluate<T = unknown>(
     functions: Record<string, FunctionDefinition>,
     values: Record<string, unknown>
-  ): unknown;
+  ): T;
+  evaluateAsync<T = unknown>(
+    functions: Record<string, FunctionDefinition>,
+    values: Record<string, unknown>
+  ): Promise<T>;
   toArray(): unknown[];
   dump(): string;
   dumpString(value: string): string;
@@ -710,10 +769,13 @@ declare class SyntaxError extends Error {
 
   name: "SyntaxError";
   cursor: number;
+  line: number;
+  column: number;
   expression?: string;
   subject?: string;
   proposals?: string[];
 
+  formatPretty(): string;
   toString(): string;
 }
 

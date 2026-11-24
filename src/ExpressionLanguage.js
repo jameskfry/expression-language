@@ -1,5 +1,5 @@
 import {tokenize} from "./Lexer";
-import Parser, {IGNORE_UNKNOWN_VARIABLES, CASE_INSENSITIVE_STRING_OPERATORS, SEMANTICS_JS, SEMANTICS_PORTABLE, SEMANTICS_MASK} from "./Parser";
+import Parser, {IGNORE_UNKNOWN_VARIABLES, IGNORE_UNKNOWN_FUNCTIONS, CASE_INSENSITIVE_STRING_OPERATORS, SEMANTICS_JS, SEMANTICS_PORTABLE, SEMANTICS_MASK} from "./Parser";
 import Compiler from "./Compiler";
 import ParsedExpression from "./ParsedExpression";
 import ArrayAdapter from "./Cache/ArrayAdapter";
@@ -7,6 +7,7 @@ import LogicException from "./LogicException";
 import ExpressionFunction from "./ExpressionFunction";
 import {phpTypeName} from "./lib/phpType";
 import {getSemantics} from "./Semantics";
+import {warnDeprecatedNullLint} from "./lib/deprecation";
 
 export default class ExpressionLanguage {
     /**
@@ -61,6 +62,23 @@ export default class ExpressionLanguage {
      */
     evaluate = (expression, values = {}) => {
         return this.parse(expression, Object.keys(values)).getNodes().evaluate(this.functions, values);
+    };
+
+    /**
+     * Evaluates an expression asynchronously, awaiting any promises returned by
+     * custom functions, object methods, property getters, or variable values.
+     *
+     * @param {Expression|string} expression The expression to evaluate
+     * @param {Object} values Values passed to the expression
+     * @returns {Promise<*>} The resolved result of the evaluation
+     */
+    evaluateAsync = async (expression, values = {}) => {
+        const parsed = this.parse(expression, Object.keys(values));
+        const root = parsed.getNodes();
+        const result = root.evaluateAsync
+            ? await root.evaluateAsync(this.functions, values)
+            : root.evaluate(this.functions, values);
+        return await result;
     };
 
     /**
@@ -119,7 +137,7 @@ export default class ExpressionLanguage {
 
     lint = (expression, names=null, flags=0) => {
         if (null === names) {
-            console.log("Deprecated: passing \"null\" as the second argument of lint is deprecated, pass IGNORE_UNKNOWN_VARIABLES instead as the third argument");
+            warnDeprecatedNullLint();
             flags |= IGNORE_UNKNOWN_VARIABLES;
             names = [];
         }
@@ -133,6 +151,38 @@ export default class ExpressionLanguage {
         // Ensure parser is initialized and pass names/flags to parser.lint
         this.getParser().lint(this.getLexer().tokenize(expression), names, flags);
     }
+
+    /**
+     * Extracts all unique variable names read by an expression, in order of first appearance.
+     *
+     * @param {Expression|string} expression
+     * @returns {string[]}
+     */
+    getVariables = (expression) => {
+        if (expression instanceof ParsedExpression) {
+            return expression.getVariables();
+        }
+
+        const flags = this.mergeFlags(IGNORE_UNKNOWN_VARIABLES | IGNORE_UNKNOWN_FUNCTIONS);
+        const parsed = this.parse(expression, [], flags);
+        return parsed.getVariables();
+    };
+
+    /**
+     * Extracts all unique function names called by an expression, in order of first appearance.
+     *
+     * @param {Expression|string} expression
+     * @returns {string[]}
+     */
+    getFunctions = (expression) => {
+        if (expression instanceof ParsedExpression) {
+            return expression.getFunctions();
+        }
+
+        const flags = this.mergeFlags(IGNORE_UNKNOWN_VARIABLES | IGNORE_UNKNOWN_FUNCTIONS);
+        const parsed = this.parse(expression, [], flags);
+        return parsed.getFunctions();
+    };
 
     /**
      * Adds the flags of the language to those of a call. The semantics are the exception: those of the call win.
