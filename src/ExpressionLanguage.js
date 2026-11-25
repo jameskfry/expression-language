@@ -75,10 +75,9 @@ export default class ExpressionLanguage {
     evaluateAsync = async (expression, values = {}) => {
         const parsed = this.parse(expression, Object.keys(values));
         const root = parsed.getNodes();
-        const result = root.evaluateAsync
-            ? await root.evaluateAsync(this.functions, values)
-            : root.evaluate(this.functions, values);
-        return await result;
+        return await (root.evaluateAsync
+            ? root.evaluateAsync(this.functions, values)
+            : root.evaluate(this.functions, values));
     };
 
     /**
@@ -154,34 +153,38 @@ export default class ExpressionLanguage {
 
     /**
      * Extracts all unique variable names read by an expression, in order of first appearance.
+     * Does not lock function registration if called before evaluate(), compile(), or parse().
      *
      * @param {Expression|string} expression
      * @returns {string[]}
      */
     getVariables = (expression) => {
-        if (expression instanceof ParsedExpression) {
-            return expression.getVariables();
-        }
-
-        const flags = this.mergeFlags(IGNORE_UNKNOWN_VARIABLES | IGNORE_UNKNOWN_FUNCTIONS);
-        const parsed = this.parse(expression, [], flags);
-        return parsed.getVariables();
+        return this._parseForIntrospection(expression).getVariables();
     };
 
     /**
      * Extracts all unique function names called by an expression, in order of first appearance.
+     * Does not lock function registration if called before evaluate(), compile(), or parse().
      *
      * @param {Expression|string} expression
      * @returns {string[]}
      */
     getFunctions = (expression) => {
+        return this._parseForIntrospection(expression).getFunctions();
+    };
+
+    _parseForIntrospection = (expression) => {
         if (expression instanceof ParsedExpression) {
-            return expression.getFunctions();
+            return expression;
         }
 
         const flags = this.mergeFlags(IGNORE_UNKNOWN_VARIABLES | IGNORE_UNKNOWN_FUNCTIONS);
-        const parsed = this.parse(expression, [], flags);
-        return parsed.getFunctions();
+        if (null !== this.parser) {
+            return this.parse(expression, [], flags);
+        }
+
+        const nodes = new Parser(this.functions).parse(this.getLexer().tokenize(expression), [], flags);
+        return new ParsedExpression(expression, nodes);
     };
 
     /**

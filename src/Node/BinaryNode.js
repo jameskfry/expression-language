@@ -249,8 +249,7 @@ export default class BinaryNode extends Node {
         const ops = getSemantics(this.attributes.semantics);
         const operator = this.attributes.operator;
         const leftNode = this.nodes.left;
-        const leftRaw = leftNode.evaluateAsync ? await leftNode.evaluateAsync(functions, values) : leftNode.evaluate(functions, values);
-        const left = await leftRaw;
+        const left = await (leftNode.evaluateAsync ? leftNode.evaluateAsync(functions, values) : leftNode.evaluate(functions, values));
 
         switch (operator) {
             case 'or':
@@ -259,8 +258,8 @@ export default class BinaryNode extends Node {
                     return true;
                 }
                 const rightNode = this.nodes.right;
-                const rightRaw = rightNode.evaluateAsync ? await rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values);
-                return ops.truthy(await rightRaw);
+                const rightVal = await (rightNode.evaluateAsync ? rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values));
+                return ops.truthy(rightVal);
             }
             case 'and':
             case '&&': {
@@ -268,14 +267,13 @@ export default class BinaryNode extends Node {
                     return false;
                 }
                 const rightNode = this.nodes.right;
-                const rightRaw = rightNode.evaluateAsync ? await rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values);
-                return ops.truthy(await rightRaw);
+                const rightVal = await (rightNode.evaluateAsync ? rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values));
+                return ops.truthy(rightVal);
             }
         }
 
         const rightNode = this.nodes.right;
-        const rightRaw = rightNode.evaluateAsync ? await rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values);
-        const right = await rightRaw;
+        const right = await (rightNode.evaluateAsync ? rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values));
 
         switch (operator) {
             case 'xor':

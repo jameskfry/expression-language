@@ -448,7 +448,7 @@ language.addFunction(new ExpressionFunction('strtoupper', (s) => `${s}.toUpperCa
 language.addFunction(new ExpressionFunction('clamp', jsCompiler, evaluator, (x, min, max) => `\\max(${min}, \\min(${max}, ${x}))`));
 ```
 
-`min()`, `max()`, `count()` and the functions of `StringProvider`, `ArrayProvider` and `DateProvider` are already declared as PHP functions. `isset()` (`BasicProvider`) is not, so it is called through the evaluator.
+`min()`, `max()`, `count()` and the functions of `StringProvider`, `ArrayProvider`, `DateProvider` and `MathProvider` are already declared for PHP compilation. `isset()` (`BasicProvider`) is not, so it is called through the evaluator.
 
 A PHP file always runs with PHP's rules: the language it is dumped from has to use the `'symfony'` (the default) or `'portable'`
 [semantics](#semantics-symfonys-rules-javascripts-or-both); a `'js'` one refuses to dump PHP. Beyond that, mind these:
@@ -541,11 +541,11 @@ try {
   el.parse('1 +');
 } catch (e) {
   if (e instanceof SyntaxError) {
-    console.log(e.cursor, e.line, e.column); // 1-based line and column, 0-based cursor
+    console.log(e.cursor, e.line, e.column); // 4, 1, 4 (1-based line, column, and token cursor)
     console.log(e.formatPretty());
-    // Syntax Error: Unexpected token "operator" of value "+" around position 3.
-    //   1 | 1 +
-    //     |   ^
+    // Unexpected token "end of expression" of value "" around position 4 for expression `1 +`.
+    // 1 | 1 +
+    //   |    ^
   }
 }
 

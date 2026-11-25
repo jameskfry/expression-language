@@ -24,8 +24,7 @@ export default class ParsedExpression extends Expression {
 
     evaluateAsync = async (functions, values) => {
         const root = this.nodes;
-        const result = root.evaluateAsync ? await root.evaluateAsync(functions, values) : root.evaluate(functions, values);
-        return await result;
+        return await (root.evaluateAsync ? root.evaluateAsync(functions, values) : root.evaluate(functions, values));
     }
 
     /**

@@ -752,6 +752,15 @@ declare const CompileRuntime: {
   array_intersect(...arrays: unknown[][]): unknown[];
   date(format: string, timestamp?: number): string;
   strtotime(str: string, now?: number): number | false;
+  abs(x: number): number;
+  round(x: number, precision?: number): number;
+  floor(x: number): number;
+  ceil(x: number): number;
+  pow(base: number, exp: number): number;
+  sqrt(x: number): number;
+  clamp(val: number, min: number, max: number): number;
+  rand(min?: number, max?: number): number;
+  random(): number;
 };
 
 /**

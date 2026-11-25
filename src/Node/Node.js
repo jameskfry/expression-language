@@ -89,8 +89,7 @@ export default class Node {
     evaluateAsync = async (functions, values) => {
         let results = [];
         for (let node of Object.values(this.nodes)) {
-            const evaluated = node.evaluateAsync ? await node.evaluateAsync(functions, values) : node.evaluate(functions, values);
-            results.push(await evaluated);
+            results.push(await (node.evaluateAsync ? node.evaluateAsync(functions, values) : node.evaluate(functions, values)));
         }
 
         return results;

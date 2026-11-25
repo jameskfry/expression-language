@@ -121,17 +121,45 @@ describe('evaluateAsync', () => {
         expect(falseBranchCalled).toBe(true);
     });
 
-    test('handles null-coalescing with async left branch', async () => {
+    test('evaluates Elvis operator (?:) condition only once when truthy', async () => {
+        let calls = 0;
+        let falsyCalls = 0;
+        el.register('fetchOnce', () => 'fetchOnce()', async () => {
+            calls += 1;
+            return 'value';
+        });
+        el.register('fetchEmpty', () => 'fetchEmpty()', async () => {
+            falsyCalls += 1;
+            return '';
+        });
+
+        const res1 = await el.evaluateAsync('fetchOnce() ?: "fallback"');
+        expect(res1).toBe('value');
+        expect(calls).toBe(1);
+
+        const res2 = await el.evaluateAsync('fetchEmpty() ?: "fallback"');
+        expect(res2).toBe('fallback');
+        expect(falsyCalls).toBe(1);
+    });
+
+    test('handles null-coalescing with async left branch and short-circuits fallback', async () => {
+        let fallbackCalled = false;
         const helper = {
             fetchNull: async () => null,
             fetchValue: async () => 'found',
+            fetchFallback: async () => {
+                fallbackCalled = true;
+                return 'default';
+            },
         };
 
-        const fallback = await el.evaluateAsync('helper.fetchNull() ?? "default"', { helper });
-        expect(fallback).toBe('default');
-
-        const value = await el.evaluateAsync('helper.fetchValue() ?? "default"', { helper });
+        const value = await el.evaluateAsync('helper.fetchValue() ?? helper.fetchFallback()', { helper });
         expect(value).toBe('found');
+        expect(fallbackCalled).toBe(false);
+
+        const fallback = await el.evaluateAsync('helper.fetchNull() ?? helper.fetchFallback()', { helper });
+        expect(fallback).toBe('default');
+        expect(fallbackCalled).toBe(true);
     });
 
     test('evaluates async array and object literals', async () => {
@@ -154,18 +182,30 @@ describe('evaluateAsync', () => {
     });
 
     describe('CompiledExpressionLanguage', () => {
-        test('evaluates expressions asynchronously in compiled and fallback modes', async () => {
+        test('evaluates precompiled expressions asynchronously with Promise values, async functions, and async methods', async () => {
+            el.register('asyncFetch', (x) => `functions["asyncFetch"].evaluator(values, ${x})`, async (v, x) => x + 100);
+
             const compiled = new CompiledExpressionLanguage(el);
-            const dump = compiled.dumpCompiled(['x * 2', 'name ?? "guest"'], { format: 'expression' });
+            const dump = compiled.dumpCompiled([
+                'x * 2',
+                'asyncFetch(5) + 1',
+                'user.isActive() and balance > 0',
+                'name ?? "guest"',
+            ], { format: 'expression' });
             const loader = new CompiledExpressionLanguage(el, dump);
 
-            const r1 = await loader.evaluateAsync('x * 2', { x: 21 });
-            expect(r1).toBe(42);
+            // Promise value in precompiled expression
+            expect(await loader.evaluateAsync('x * 2', { x: Promise.resolve(21) })).toBe(42);
 
-            // With async function in fallback mode
-            el.register('asyncFetch', (x) => `asyncFetch(${x})`, async (v, x) => x + 100);
-            const r2 = await loader.evaluateAsync('asyncFetch(5)');
-            expect(r2).toBe(105);
+            // Async custom function in precompiled expression
+            expect(await loader.evaluateAsync('asyncFetch(5) + 1')).toBe(106);
+
+            // Async method resolving to false in precompiled expression (must not treat Promise as truthy!)
+            const inactiveUser = { isActive: async () => false };
+            expect(await loader.evaluateAsync('user.isActive() and balance > 0', { user: inactiveUser, balance: 50 })).toBe(false);
+
+            // Uncompiled fallback expression
+            expect(await loader.evaluateAsync('asyncFetch(10)')).toBe(110);
         });
     });
 });

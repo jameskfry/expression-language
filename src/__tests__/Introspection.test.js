@@ -147,16 +147,36 @@ describe('Expression Introspection & AST Walker', () => {
         });
     });
 
+    test('does not lock register() when getVariables() or getFunctions() is called before evaluation', () => {
+        const fresh = new ExpressionLanguage();
+        const neededFns = fresh.getFunctions('double(x) + triple(y)');
+        const neededVars = fresh.getVariables('double(x) + triple(y)');
+
+        expect(neededFns).toEqual(['double', 'triple']);
+        expect(neededVars).toEqual(['x', 'y']);
+
+        // Dynamically register the discovered functions without throwing LogicException
+        fresh.register('double', (n) => `(${n} * 2)`, (v, n) => n * 2);
+        fresh.register('triple', (n) => `(${n} * 3)`, (v, n) => n * 3);
+
+        expect(fresh.evaluate('double(x) + triple(y)', { x: 4, y: 5 })).toBe(23);
+    });
+
     describe('CompiledExpressionLanguage', () => {
-        test('extracts variables and functions from compiled expressions', () => {
+        test('extracts variables in exact appearance order (including null-coalesced variables) and functions', () => {
             const compiled = new CompiledExpressionLanguage(el);
-            const dump = compiled.dumpCompiled(['price * qty', 'user.name ?? "guest"'], {
+            const dump = compiled.dumpCompiled([
+                'price * qty',
+                'user.name ?? "guest"',
+                'a ?? b + c',
+            ], {
                 format: 'expression',
             });
             const loader = new CompiledExpressionLanguage(el, dump);
 
             expect(loader.getVariables('price * qty')).toEqual(['price', 'qty']);
             expect(loader.getVariables('user.name ?? "guest"')).toEqual(['user']);
+            expect(loader.getVariables('a ?? b + c')).toEqual(['a', 'b', 'c']);
 
             // Falls back for uncompiled expressions
             expect(loader.getVariables('a + b + c')).toEqual(['a', 'b', 'c']);

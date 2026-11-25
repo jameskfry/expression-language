@@ -163,10 +163,9 @@ export default class GetAttrNode extends Node {
 
     evaluateChainAsync = async (functions, values, state) => {
         const node = this.nodes.node;
-        const rawValue = node instanceof GetAttrNode
-            ? await node.evaluateChainAsync(functions, values, state)
-            : (node.evaluateAsync ? await node.evaluateAsync(functions, values) : node.evaluate(functions, values));
-        const value = await rawValue;
+        const value = await (node instanceof GetAttrNode
+            ? node.evaluateChainAsync(functions, values, state)
+            : (node.evaluateAsync ? node.evaluateAsync(functions, values) : node.evaluate(functions, values)));
 
         switch(this.attributes.type) {
             case GetAttrNode.PROPERTY_CALL: {
@@ -211,11 +210,11 @@ export default class GetAttrNode extends Node {
                 }
 
                 const fnArgs = this.nodes.fnArguments;
-                const evaluatedArgs = fnArgs.evaluateAsync
-                    ? await fnArgs.evaluateAsync(functions, values)
-                    : fnArgs.evaluate(functions, values);
+                const evaluatedArgs = await (fnArgs.evaluateAsync
+                    ? fnArgs.evaluateAsync(functions, values)
+                    : fnArgs.evaluate(functions, values));
 
-                return await value[method].apply(value, await evaluatedArgs);
+                return await value[method].apply(value, evaluatedArgs);
             }
             case GetAttrNode.ARRAY_CALL: {
                 if (null === value && (this.attributes.is_null_safe || state.shortCircuited)) {
@@ -232,8 +231,7 @@ export default class GetAttrNode extends Node {
                 }
 
                 const attrNode = this.nodes.attribute;
-                const rawKey = attrNode.evaluateAsync ? await attrNode.evaluateAsync(functions, values) : attrNode.evaluate(functions, values);
-                const key = await rawKey;
+                const key = await (attrNode.evaluateAsync ? attrNode.evaluateAsync(functions, values) : attrNode.evaluate(functions, values));
                 assertAccessible(value, key);
 
                 if (this.attributes.is_null_coalesce) {

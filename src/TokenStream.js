@@ -1,10 +1,15 @@
 import SyntaxError from "./SyntaxError";
 
 export class TokenStream {
-    constructor(expression, tokens) {
+    constructor(expression, tokens, rawExpression) {
         this.expression = expression;
         this.position = 0;
         this.tokens = tokens;
+        Object.defineProperty(this, '_rawExpression', {
+            value: rawExpression !== undefined ? rawExpression : expression,
+            enumerable: false,
+            configurable: true,
+        });
     }
 
     get current() {
@@ -23,7 +28,7 @@ export class TokenStream {
         this.position += 1;
 
         if (this.tokens[this.position] === undefined) {
-            throw new SyntaxError("Unexpected end of expression", this.last.cursor, this.expression);
+            throw new SyntaxError("Unexpected end of expression", this.last.cursor, this.expression, undefined, undefined, {rawExpression: this._rawExpression});
         }
     };
 
@@ -40,7 +45,7 @@ export class TokenStream {
             }
             compiledMessage += `Unexpected token "${token.type}" of value "${token.value ?? ''}" ("${type}" expected${valueMessage})`;
 
-            throw new SyntaxError(compiledMessage, token.cursor, this.expression);
+            throw new SyntaxError(compiledMessage, token.cursor, this.expression, undefined, undefined, {rawExpression: this._rawExpression});
         }
         this.next();
     };

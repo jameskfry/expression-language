@@ -74,8 +74,7 @@ export default class UnaryNode extends Node {
     evaluateAsync = async (functions, values) => {
         const ops = getSemantics(this.attributes.semantics);
         const child = this.nodes.node;
-        const value = child.evaluateAsync ? await child.evaluateAsync(functions, values) : child.evaluate(functions, values);
-        const resolved = await value;
+        const resolved = await (child.evaluateAsync ? child.evaluateAsync(functions, values) : child.evaluate(functions, values));
         switch(this.attributes.operator) {
             case 'not':
             case '!':

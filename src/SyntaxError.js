@@ -1,7 +1,29 @@
 import {getEditDistance} from "./lib/Levenshtein";
 
+function splitLinesWithOffsets(str) {
+    const text = String(str);
+    const lines = [];
+    const regex = /\r\n|\r|\n/g;
+    let start = 0;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+        lines.push({
+            text: text.slice(start, match.index),
+            start,
+            nextStart: match.index + match[0].length,
+        });
+        start = match.index + match[0].length;
+    }
+    lines.push({
+        text: text.slice(start),
+        start,
+        nextStart: text.length + 1,
+    });
+    return lines;
+}
+
 export default class SyntaxError extends Error {
-    constructor(message, cursor = 0, expression = '', subject, proposals) {
+    constructor(message, cursor = 0, expression = '', subject, proposals, options) {
         // Like Symfony, the position, the expression and the "Did you mean" hint are part of the message itself
         let fullMessage = `${String(message).replace(/\.+$/, '')} around position ${cursor}`;
         if (expression) {
@@ -32,24 +54,31 @@ export default class SyntaxError extends Error {
         this.subject = subject;
         this.proposals = proposals;
 
-        // Compute 1-based line and column from the cursor
-        if (expression) {
-            const lines = String(expression).split(/\r\n|\r|\n/);
-            let charCount = 0;
+        const rawSource = options && options.rawExpression !== undefined ? String(options.rawExpression) : String(expression || '');
+        Object.defineProperty(this, '_rawExpression', {
+            value: rawSource,
+            enumerable: false,
+            configurable: true,
+        });
+
+        // Token cursors are 1-based (matching Symfony), whereas Lexer character errors pass 0-based indices via options.zeroBased
+        const rawOffset = options && options.zeroBased ? Math.max(0, cursor) : Math.max(0, cursor - 1);
+
+        if (rawSource) {
+            const offset = Math.min(rawOffset, rawSource.length);
+            const lines = splitLinesWithOffsets(rawSource);
             this.line = 1;
-            this.column = cursor + 1;
+            this.column = offset + 1;
             for (let i = 0; i < lines.length; i++) {
-                const lineLen = lines[i].length + 1;
-                if (charCount + lineLen > cursor || i === lines.length - 1) {
+                if (offset < lines[i].nextStart || i === lines.length - 1) {
                     this.line = i + 1;
-                    this.column = Math.max(0, cursor - charCount) + 1;
+                    this.column = Math.max(0, offset - lines[i].start) + 1;
                     break;
                 }
-                charCount += lineLen;
             }
         } else {
             this.line = 1;
-            this.column = cursor + 1;
+            this.column = rawOffset + 1;
         }
     }
 
@@ -59,11 +88,12 @@ export default class SyntaxError extends Error {
      * @returns {string}
      */
     formatPretty() {
-        if (!this.expression) {
+        const source = this._rawExpression || this.expression;
+        if (!source) {
             return this.message;
         }
 
-        const lines = String(this.expression).split(/\r\n|\r|\n/);
+        const lines = splitLinesWithOffsets(source);
         const lineIdx = Math.min(Math.max(0, this.line - 1), lines.length - 1);
         const colIdx = Math.max(0, this.column - 1);
 
@@ -73,7 +103,7 @@ export default class SyntaxError extends Error {
 
         return [
             this.message,
-            `${lineNum} | ${lines[lineIdx]}`,
+            `${lineNum} | ${lines[lineIdx].text}`,
             `${gutter}${pointer}`,
         ].join('\n');
     }

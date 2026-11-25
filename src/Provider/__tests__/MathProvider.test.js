@@ -1,5 +1,6 @@
 import ExpressionLanguage from "../../ExpressionLanguage";
 import CompiledExpressionLanguage from "../../CompiledExpressionLanguage";
+import CompileRuntime from "../../CompileRuntime";
 import MathProvider from "../MathProvider";
 
 describe('MathProvider', () => {
@@ -16,9 +17,12 @@ describe('MathProvider', () => {
             expect(el.evaluate('abs(0)')).toBe(0);
         });
 
-        test('round', () => {
+        test('round (PHP half-away-from-zero and precision parity)', () => {
             expect(el.evaluate('round(3.4)')).toBe(3);
             expect(el.evaluate('round(3.5)')).toBe(4);
+            expect(el.evaluate('round(-3.5)')).toBe(-4);
+            expect(el.evaluate('round(1.005, 2)')).toBe(1.01);
+            expect(el.evaluate('round(1241757, -3)')).toBe(1242000);
             expect(el.evaluate('round(3.14159, 2)')).toBe(3.14);
             expect(el.evaluate('round(3.14159, 4)')).toBe(3.1416);
         });
@@ -58,6 +62,8 @@ describe('MathProvider', () => {
             const defaultVal = el.evaluate('rand()');
             expect(defaultVal).toBeGreaterThanOrEqual(0);
             expect(Number.isInteger(defaultVal)).toBe(true);
+
+            expect(() => el.evaluate('rand(10)')).toThrow('expects exactly 2 parameters');
         });
 
         test('random', () => {
@@ -68,11 +74,11 @@ describe('MathProvider', () => {
     });
 
     describe('compile', () => {
-        test('compiles to valid, runnable JavaScript', () => {
+        test('compiles to valid, runnable JavaScript using CompileRuntime', () => {
             const expressions = [
                 ['abs(x)', { x: -7 }, 7],
-                ['round(x, 2)', { x: 5.678 }, 5.68],
-                ['round(x)', { x: 5.678 }, 6],
+                ['round(x, 2)', { x: 1.005 }, 1.01],
+                ['round(x)', { x: -3.5 }, -4],
                 ['floor(x)', { x: 8.9 }, 8],
                 ['ceil(x)', { x: 8.1 }, 9],
                 ['pow(x, 3)', { x: 3 }, 27],
@@ -83,9 +89,13 @@ describe('MathProvider', () => {
             for (const [expr, values, expected] of expressions) {
                 const names = Object.keys(values);
                 const source = el.compile(expr, names);
-                const fn = new Function(...names, `return ${source};`);
-                expect(fn(...Object.values(values))).toBe(expected);
+                const fn = new Function('__runtime', ...names, `return ${source};`);
+                expect(fn(CompileRuntime, ...Object.values(values))).toBe(expected);
             }
+
+            const badRandSource = el.compile('rand(10)');
+            const badRandFn = new Function('__runtime', `return ${badRandSource};`);
+            expect(() => badRandFn(CompileRuntime)).toThrow('expects exactly 2 parameters');
         });
     });
 

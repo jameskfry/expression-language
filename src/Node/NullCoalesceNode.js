@@ -24,15 +24,13 @@ export default class NullCoalesceNode extends Node {
 
     evaluateAsync = async (functions, values) => {
         const leftNode = this.nodes.expr1;
-        const leftRaw = leftNode.evaluateAsync ? await leftNode.evaluateAsync(functions, values) : leftNode.evaluate(functions, values);
-        const left = await leftRaw;
+        const left = await (leftNode.evaluateAsync ? leftNode.evaluateAsync(functions, values) : leftNode.evaluate(functions, values));
         if (left !== null && left !== undefined) {
             return left;
         }
 
         const rightNode = this.nodes.expr2;
-        const rightRaw = rightNode.evaluateAsync ? await rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values);
-        return await rightRaw;
+        return await (rightNode.evaluateAsync ? rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values));
     }
 
     toArray = () => {
