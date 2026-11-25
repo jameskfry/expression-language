@@ -17,6 +17,11 @@ export default class NameNode extends Node {
         return value;
     };
 
+    evaluateAsync = async (functions, values) => {
+        let value = values[this.attributes.name];
+        return await value;
+    };
+
     toArray = () => {
         return [this.attributes.name];
     }

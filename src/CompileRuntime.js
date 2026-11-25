@@ -9,14 +9,16 @@ import {implode} from "locutus/php/strings/implode";
 import {count} from "locutus/php/array/count";
 import {date} from "locutus/php/datetime/date";
 import {strtotime} from "locutus/php/datetime/strtotime";
+import {round} from "locutus/php/math/round";
+import {rand} from "locutus/php/math/rand";
 import {arrayIntersectFn} from "./Provider/ArrayProvider";
 import {SEMANTICS} from "./Semantics";
 
 /**
  * Helpers referenced by javascript source produced by ExpressionLanguage#compile()
- * for the bundled StringProvider/ArrayProvider/DateProvider functions (e.g.
- * `strtolower`, `count`, `date`). Those functions wrap PHP-compatible
- * (locutus) implementations that don't exist as JavaScript globals, so
+ * for the bundled StringProvider/ArrayProvider/DateProvider/MathProvider functions
+ * (e.g. `strtolower`, `count`, `date`, `round`, `clamp`). Those functions wrap
+ * PHP-compatible implementations that don't exist as JavaScript globals, so
  * compiled output calls them as `__runtime.<name>(...)`.
  *
  * To execute compile() output that uses one of those functions, pass this
@@ -44,6 +46,15 @@ const compileRuntime = {
     array_intersect: (...args) => arrayIntersectFn.getEvaluator()(null, ...args),
     date,
     strtotime,
+    abs: Math.abs,
+    round,
+    floor: Math.floor,
+    ceil: Math.ceil,
+    pow: Math.pow,
+    sqrt: Math.sqrt,
+    clamp: (val, min, max) => Math.min(max, Math.max(min, val)),
+    rand,
+    random: Math.random,
     // the operators of the "symfony" and "portable" semantics (the default ones), which compile() calls
     symfony: SEMANTICS.symfony,
     portable: SEMANTICS.portable,

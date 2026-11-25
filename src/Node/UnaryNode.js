@@ -71,6 +71,23 @@ export default class UnaryNode extends Node {
         return ops.plus(value);
     };
 
+    evaluateAsync = async (functions, values) => {
+        const ops = getSemantics(this.attributes.semantics);
+        const child = this.nodes.node;
+        const resolved = await (child.evaluateAsync ? child.evaluateAsync(functions, values) : child.evaluate(functions, values));
+        switch(this.attributes.operator) {
+            case 'not':
+            case '!':
+                return !ops.truthy(resolved);
+            case '-':
+                return ops.neg(resolved);
+            case '~':
+                return ops.bitNot(resolved);
+        }
+
+        return ops.plus(resolved);
+    };
+
     toArray = () => {
         return ['(', this.attributes.operator + " ", this.nodes.node, ')'];
     }

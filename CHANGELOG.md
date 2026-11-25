@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### ✨ New Features
+
+- **Asynchronous Evaluation (`evaluateAsync`)**:
+  - Added `evaluateAsync(expression, values)` across `ExpressionLanguage`, `CompiledExpressionLanguage`, and `ParsedExpression`.
+  - Supports asynchronous functions, Promises in context variables, and async object methods.
+  - Fully honors short-circuit evaluation: branches in `and`, `or`, ternary (`?:`), and null-coalescing (`??`) operators are never awaited or evaluated if the leading condition short-circuits.
+- **Expression Introspection and AST Walker**:
+  - Added `getVariables()` and `getFunctions()` to `ExpressionLanguage`, `CompiledExpressionLanguage`, and `ParsedExpression` to inspect referenced variables and functions without evaluation.
+  - Added `Node.prototype.walk(visitor, parent, key)` and `ParsedExpression.prototype.walk(visitor)` for custom AST traversal, analysis, and validation.
+- **Built-in `MathProvider`**:
+  - Added `MathProvider` bundling common mathematical functions: `abs`, `round`, `floor`, `ceil`, `pow`, `sqrt`, `clamp`, `rand`, and `random`.
+  - Full JS and PHP compiler parity with `CompileRuntime` and standard PHP math functions.
+- **Diagnostic Code Frames & Pretty Syntax Errors**:
+  - `SyntaxError` now tracks 1-based `line` and `column` numbers.
+  - Added `SyntaxError.prototype.formatPretty()` to render diagnostic code frames with line numbers and caret indicators pointing to exact error positions.
+- **Clean Deprecation Reporting**:
+  - Replaced repetitive `console.log` warnings when passing `null` for expression names with standard Node `process.emitWarning('...', 'DeprecationWarning', 'DEP_EXPR_LANG_LINT_NULL')`, deduplicated so it triggers only once per process.
+- **Modern Packaging & TypeScript Generic Evaluation**:
+  - Added native ESM bundle (`dist/index.mjs`) alongside CommonJS (`lib/index.js`) and browser UMD (`dist/expression-language.min.js`).
+  - Added package `"exports"` and `"module"` map in `package.json`.
+  - Enhanced TypeScript definitions with generic result types: `evaluate<T = unknown>()` and `evaluateAsync<T = unknown>()`.
+
 ## 3.0.0
 
 This release brings the library back in line with Symfony's ExpressionLanguage, closes a hole that let expressions read

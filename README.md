@@ -138,6 +138,25 @@ let result = expressionLanguage.evaluate(expression, values);
 // result is true
 ```
 
+#### Asynchronous Evaluation (evaluateAsync)
+When expressions involve asynchronous functions, Promises in context variables, or async methods (such as fetching remote records or querying a database), evaluate them using `evaluateAsync()`:
+
+```javascript
+let expression = 'user.isActive() and fetchRole(user.id) === "admin"';
+let values = {
+    user: {
+        id: 42,
+        isActive: async () => true
+    },
+    fetchRole: async (id) => Promise.resolve('admin')
+};
+
+let result = await expressionLanguage.evaluateAsync(expression, values);
+// result is true
+```
+
+`evaluateAsync()` fully preserves short-circuit semantics: in `a and b`, `a or b`, `a ? b : c`, or `a ?? b`, alternate branches are never awaited or evaluated if the leading condition short-circuits. It is available on `ExpressionLanguage`, `CompiledExpressionLanguage`, and `ParsedExpression`.
+
 #### Registering custom functions
 You can register functions in two main ways. Make sure to register functions before calling evaluate(), compile(), or parse(); otherwise a LogicException will be thrown.
 
@@ -184,26 +203,29 @@ Providers are a convenient way to bundle and register multiple functions. A prov
   - StringProvider: strtolower, strtoupper, explode, strlen, strstr, stristr, substr
   - ArrayProvider: implode, count, array_intersect
   - DateProvider: date, strtotime
+  - MathProvider: abs, round, floor, ceil, pow, sqrt, clamp, rand, random
 
 - Registering built-in providers:
 ```javascript
-import { ExpressionLanguage, StringProvider, ArrayProvider, DateProvider, BasicProvider } from 'expression-language';
+import { ExpressionLanguage, StringProvider, ArrayProvider, DateProvider, MathProvider, BasicProvider } from 'expression-language';
 
 // Pass providers in the constructor (array or any iterable)
 const el = new ExpressionLanguage(null, [
   new StringProvider(),
   new ArrayProvider(),
   new DateProvider(),
+  new MathProvider(),
   new BasicProvider(),
 ]);
 
 console.log(el.evaluate('strtoupper("hello")')); // 'HELLO'
 console.log(el.evaluate('count([1,2,3])')); // 3
+console.log(el.evaluate('round(clamp(price * 1.15, 10, 100), 2)', { price: 80 })); // 92
 console.log(el.evaluate('isset(foo.bar)', { foo: { bar: 1 } })); // true
 ```
 
 ##### Running compiled output that uses provider functions
-`compile()` (unlike `evaluate()`) returns a *string* of JavaScript source — it's up to you to run it, typically with `new Function()`. Operators are not plain JavaScript operators: `a + b` means what it means in Symfony, so with the default [semantics](#semantics-symfonys-rules-javascripts-or-both) it compiles to `__runtime.symfony.add(a, b)`. The bundled provider functions (`strtolower`, `count`, `date`, etc.) wrap PHP-compatible implementations that don't exist as JavaScript globals either, so their compiled output calls `__runtime.<name>(...)`. Pass `CompileRuntime` into scope under the name `__runtime` when executing the code. (With `semantics: 'js'`, core syntax such as arithmetic, comparisons, `in`/`not in`, `..` and the custom functions you register compiles to fully self-contained JavaScript: only provider functions need the runtime.)
+`compile()` (unlike `evaluate()`) returns a *string* of JavaScript source — it's up to you to run it, typically with `new Function()`. Operators are not plain JavaScript operators: `a + b` means what it means in Symfony, so with the default [semantics](#semantics-symfonys-rules-javascripts-or-both) it compiles to `__runtime.symfony.add(a, b)`. The bundled provider functions (`strtolower`, `count`, `date`, `clamp`, etc.) wrap PHP-compatible implementations that don't exist as JavaScript globals either, so their compiled output calls `__runtime.<name>(...)`. Pass `CompileRuntime` into scope under the name `__runtime` when executing the code. (With `semantics: 'js'`, core syntax such as arithmetic, comparisons, `in`/`not in`, `..` and the custom functions you register compiles to fully self-contained JavaScript: only provider functions need the runtime.)
 
 ```javascript
 import { ExpressionLanguage, StringProvider, CompileRuntime } from 'expression-language';
@@ -221,13 +243,13 @@ Note: `isset()` only supports `compile()` with an expression path (`isset(foo.ba
 ```javascript
 import { ExpressionLanguage, ExpressionFunction } from 'expression-language';
 
-class MathProvider {
+class FinanceProvider {
   getFunctions() {
     return [
       new ExpressionFunction(
-        'clamp',
-        (x, min, max) => `Math.min(${max}, Math.max(${min}, ${x}))`,
-        (values, x, min, max) => Math.min(max, Math.max(min, x))
+        'discount',
+        (price, rate) => `((${price}) * (1 - (${rate})))`,
+        (values, price, rate) => price * (1 - rate)
       ),
       new ExpressionFunction(
         'pct',
@@ -239,9 +261,9 @@ class MathProvider {
 }
 
 const el = new ExpressionLanguage();
-el.registerProvider(new MathProvider());
+el.registerProvider(new FinanceProvider());
 
-console.log(el.evaluate('clamp(150, 0, 100)')); // 100
+console.log(el.evaluate('discount(100, 0.2)')); // 80
 console.log(el.evaluate('pct(2, 8)')); // 25
 ```
 
@@ -426,7 +448,7 @@ language.addFunction(new ExpressionFunction('strtoupper', (s) => `${s}.toUpperCa
 language.addFunction(new ExpressionFunction('clamp', jsCompiler, evaluator, (x, min, max) => `\\max(${min}, \\min(${max}, ${x}))`));
 ```
 
-`min()`, `max()`, `count()` and the functions of `StringProvider`, `ArrayProvider` and `DateProvider` are already declared as PHP functions. `isset()` (`BasicProvider`) is not, so it is called through the evaluator.
+`min()`, `max()`, `count()` and the functions of `StringProvider`, `ArrayProvider`, `DateProvider` and `MathProvider` are already declared for PHP compilation. `isset()` (`BasicProvider`) is not, so it is called through the evaluator.
 
 A PHP file always runs with PHP's rules: the language it is dumped from has to use the `'symfony'` (the default) or `'portable'`
 [semantics](#semantics-symfonys-rules-javascripts-or-both); a `'js'` one refuses to dump PHP. Beyond that, mind these:
@@ -479,8 +501,36 @@ try {
 Notes:
 - Passing null for the names parameter is deprecated; use IGNORE_UNKNOWN_VARIABLES instead when you want to allow unknown variables.
 
+#### Expression Introspection and AST Walking
+You can introspect expressions to discover which variables and functions they use without evaluating them:
+
+```javascript
+// Extract all variable names used in an expression:
+let vars = el.getVariables('user.name + prefix ?? fallback');
+// vars: ['user', 'prefix', 'fallback']
+
+// Extract all function names called in an expression:
+let fns = el.getFunctions('max(count(items), 10) + strtoupper(name)');
+// fns: ['max', 'count', 'strtoupper']
+```
+
+Both methods are also available directly on a `ParsedExpression`:
+```javascript
+const parsed = el.parse('a + b(c)', ['a', 'c']);
+console.log(parsed.getVariables()); // ['a', 'c']
+console.log(parsed.getFunctions()); // ['b']
+```
+
+You can also traverse and inspect the AST using `walk()`:
+```javascript
+parsed.walk((node, parent, key) => {
+  console.log(`Visited ${node.constructor.name}`);
+  // Returning false skips traversing this node's children
+});
+```
+
 #### Additional exports
-Beyond `ExpressionLanguage` and the providers, the package also exports the lower-level building blocks it's made of, for advanced use cases like catching parse errors by type or persisting a parsed expression:
+Beyond `ExpressionLanguage` and the providers, the package also exports the lower-level building blocks it's made of, for advanced use cases like catching parse errors by type, inspecting code frames, or persisting a parsed expression:
 
 ```javascript
 import { Expression, ParsedExpression, SyntaxError, CompileRuntime } from 'expression-language';
@@ -491,7 +541,11 @@ try {
   el.parse('1 +');
 } catch (e) {
   if (e instanceof SyntaxError) {
-    console.log(e.message, e.cursor); // parse errors carry a cursor position (and proposals, when available)
+    console.log(e.cursor, e.line, e.column); // 4, 1, 4 (1-based line, column, and token cursor)
+    console.log(e.formatPretty());
+    // Unexpected token "end of expression" of value "" around position 4 for expression `1 +`.
+    // 1 | 1 +
+    //   |    ^
   }
 }
 
@@ -502,7 +556,7 @@ const rebuilt = ParsedExpression.fromJSON(json);
 console.log(el.evaluate(rebuilt, { a: 1, b: 2 })); // 3
 ```
 
-Also exported: `Node`, `Token`, `TokenStream`, `CacheItem`, `OPERATOR_LEFT`, `OPERATOR_RIGHT`, `LogicException`, `DivisionByZeroError`.
+Also exported: `Node`, `Token`, `TokenStream`, `CacheItem`, `OPERATOR_LEFT`, `OPERATOR_RIGHT`, `LogicException`, `DivisionByZeroError`, `MathProvider`.
 
 ## Semantics: Symfony's rules, JavaScript's, or both
 

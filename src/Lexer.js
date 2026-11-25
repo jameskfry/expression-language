@@ -52,7 +52,8 @@ function extractName(expression, cursor) {
 }
 
 export function tokenize(expression) {
-    expression = expression.replace(/\r|\n|\t|\v|\f/g, ' ');
+    const rawExpression = String(expression);
+    expression = rawExpression.replace(/\r|\n|\t|\v|\f/g, ' ');
     let cursor = 0,
         tokens = [],
         brackets = [],
@@ -80,13 +81,13 @@ export function tokenize(expression) {
         } else if (')]}'.indexOf(expression[cursor]) >= 0) {
             // closing bracket
             if (brackets.length === 0) {
-                throw new SyntaxError(`Unexpected "${expression[cursor]}"`, cursor, expression);
+                throw new SyntaxError(`Unexpected "${expression[cursor]}"`, cursor, expression, undefined, undefined, {rawExpression, zeroBased: true});
             }
 
             let [expect, cur] = brackets.pop(),
                 matchExpect = expect.replace("(", ")").replace("{", "}").replace("[", "]");
             if (expression[cursor] !== matchExpect) {
-                throw new SyntaxError(`Unclosed "${expect}"`, cur, expression);
+                throw new SyntaxError(`Unclosed "${expect}"`, cur, expression, undefined, undefined, {rawExpression, zeroBased: true});
             }
 
             tokens.push(new Token(Token.PUNCTUATION_TYPE, expression[cursor], cursor + 1));
@@ -131,7 +132,7 @@ export function tokenize(expression) {
                 cursor += name.length;
             } else {
                 // unlexable
-                throw new SyntaxError(`Unexpected character "${expression[cursor]}"`, cursor, expression);
+                throw new SyntaxError(`Unexpected character "${expression[cursor]}"`, cursor, expression, undefined, undefined, {rawExpression, zeroBased: true});
             }
         }
     }
@@ -140,8 +141,8 @@ export function tokenize(expression) {
 
     if (brackets.length > 0) {
         let [expect, cur] = brackets.pop();
-        throw new SyntaxError(`Unclosed "${expect}"`, cur, expression);
+        throw new SyntaxError(`Unclosed "${expect}"`, cur, expression, undefined, undefined, {rawExpression, zeroBased: true});
     }
 
-    return new TokenStream(expression, tokens);
+    return new TokenStream(expression, tokens, rawExpression);
 }

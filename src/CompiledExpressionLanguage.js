@@ -125,6 +125,22 @@ export default class CompiledExpressionLanguage {
     };
 
     /**
+     * Evaluates an expression asynchronously, awaiting any promises returned by
+     * custom functions, object methods, property getters, or variable values.
+     *
+     * Because precompiled expressions are synchronous JavaScript, async evaluation
+     * delegates to the decorated ExpressionLanguage so Promise values, async functions,
+     * async methods, and short-circuiting behave identically.
+     *
+     * @param {Expression|string} expression
+     * @param {Object} values
+     * @returns {Promise<*>}
+     */
+    evaluateAsync = (expression, values = {}) => {
+        return this.expressionLanguage.evaluateAsync(expression, values);
+    };
+
+    /**
      * Validates the syntax of an expression, without parsing it when it was compiled.
      */
     lint = (expression, names = [], flags = 0) => {
@@ -160,6 +176,26 @@ export default class CompiledExpressionLanguage {
                 throw new SyntaxError(`Variable "${name}" is not valid`, cursor, String(expression), name, names);
             }
         }
+    };
+
+    /**
+     * Extracts all unique variable names read by an expression, in order of first appearance.
+     *
+     * @param {Expression|string} expression
+     * @returns {string[]}
+     */
+    getVariables = (expression) => {
+        return this.expressionLanguage.getVariables(expression);
+    };
+
+    /**
+     * Extracts all unique function names called by an expression, in order of first appearance.
+     *
+     * @param {Expression|string} expression
+     * @returns {string[]}
+     */
+    getFunctions = (expression) => {
+        return this.expressionLanguage.getFunctions(expression);
     };
 
     /**

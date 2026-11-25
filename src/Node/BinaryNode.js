@@ -245,6 +245,57 @@ export default class BinaryNode extends Node {
         throw new Error(`"BinaryNode" does not support the "${operator}" operator.`);
     };
 
+    evaluateAsync = async (functions, values) => {
+        const ops = getSemantics(this.attributes.semantics);
+        const operator = this.attributes.operator;
+        const leftNode = this.nodes.left;
+        const left = await (leftNode.evaluateAsync ? leftNode.evaluateAsync(functions, values) : leftNode.evaluate(functions, values));
+
+        switch (operator) {
+            case 'or':
+            case '||': {
+                if (ops.truthy(left)) {
+                    return true;
+                }
+                const rightNode = this.nodes.right;
+                const rightVal = await (rightNode.evaluateAsync ? rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values));
+                return ops.truthy(rightVal);
+            }
+            case 'and':
+            case '&&': {
+                if (!ops.truthy(left)) {
+                    return false;
+                }
+                const rightNode = this.nodes.right;
+                const rightVal = await (rightNode.evaluateAsync ? rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values));
+                return ops.truthy(rightVal);
+            }
+        }
+
+        const rightNode = this.nodes.right;
+        const right = await (rightNode.evaluateAsync ? rightNode.evaluateAsync(functions, values) : rightNode.evaluate(functions, values));
+
+        switch (operator) {
+            case 'xor':
+                return ops.truthy(left) !== ops.truthy(right);
+            case 'matches':
+                if ('string' !== typeof right) {
+                    throw new SyntaxError('The regex passed to "matches" must be a string');
+                }
+                return matches(right, ops.matchSubject(left));
+            case 'contains':
+            case 'starts with':
+            case 'ends with':
+                return ops[OPERATIONS[operator]](left, right, !!this.attributes.case_insensitive);
+        }
+
+        if (OPERATIONS[operator] !== undefined) {
+            return ops[OPERATIONS[operator]](left, right);
+        }
+
+        throw new Error(`"BinaryNode" does not support the "${operator}" operator.`);
+    };
+
     toArray = () => {
         return ["(", this.nodes.left, ' ' + this.attributes.operator + ' ', this.nodes.right, ")"];
     }

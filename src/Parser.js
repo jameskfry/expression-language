@@ -13,6 +13,7 @@ import ArgumentsNode from "./Node/ArgumentsNode";
 import GetAttrNode from "./Node/GetAttrNode";
 import NullCoalesceNode from "./Node/NullCoalesceNode";
 import NullCoalescedNameNode from "./Node/NullCoalescedNameNode";
+import {warnDeprecatedNullLint} from "./lib/deprecation";
 
 
 export const OPERATOR_LEFT = 1;
@@ -120,7 +121,7 @@ export default class Parser {
         let node = this.parseExpression();
 
         if (!this.tokenStream.isEOF()) {
-            throw new SyntaxError(`Unexpected token "${this.tokenStream.current.type}" of value "${this.tokenStream.current.value ?? ''}"`, this.tokenStream.current.cursor, this.tokenStream.expression);
+            throw new SyntaxError(`Unexpected token "${this.tokenStream.current.type}" of value "${this.tokenStream.current.value ?? ''}"`, this.tokenStream.current.cursor, this.tokenStream.expression, undefined, undefined, {rawExpression: this.tokenStream._rawExpression});
         }
 
         return node;
@@ -128,7 +129,7 @@ export default class Parser {
 
     lint = (tokenStream, names=[], flags=0) => {
         if (null === names) {
-            console.log("Deprecated: passing \"null\" as the second argument of lint is deprecated, pass IGNORE_UNKNOWN_VARIABLES instead as the third argument");
+            warnDeprecatedNullLint();
 
             flags |= IGNORE_UNKNOWN_VARIABLES;
             names = [];
@@ -184,7 +185,10 @@ export default class Parser {
             throw new SyntaxError(
                 `Expression is nested too deeply, the maximum nesting level is ${MAX_NESTING_LEVEL}`,
                 this.tokenStream.current.cursor,
-                this.tokenStream.expression
+                this.tokenStream.expression,
+                undefined,
+                undefined,
+                {rawExpression: this.tokenStream._rawExpression}
             );
         }
     };
@@ -273,7 +277,7 @@ export default class Parser {
                     default:
                         if ("(" === this.tokenStream.current.value) {
                             if (undefined === this.functions[token.value] && !(this.flags & IGNORE_UNKNOWN_FUNCTIONS)) {
-                                throw new SyntaxError(`The function "${token.value}" does not exist`, token.cursor, this.tokenStream.expression, token.value, Object.keys(this.functions));
+                                throw new SyntaxError(`The function "${token.value}" does not exist`, token.cursor, this.tokenStream.expression, token.value, Object.keys(this.functions), {rawExpression: this.tokenStream._rawExpression});
                             }
 
                             node = new FunctionNode(token.value, this.parseArguments());
@@ -290,7 +294,7 @@ export default class Parser {
                                         return new NullCoalescedNameNode(token.value);
                                     }
 
-                                    throw new SyntaxError(`Variable "${token.value}" is not valid`, token.cursor, this.tokenStream.expression, token.value, this.getNames());
+                                    throw new SyntaxError(`Variable "${token.value}" is not valid`, token.cursor, this.tokenStream.expression, token.value, this.getNames(), {rawExpression: this.tokenStream._rawExpression});
                                 }
 
                                 name = token.value;
@@ -320,7 +324,7 @@ export default class Parser {
                     node = this.parseHashExpression();
                 }
                 else {
-                    throw new SyntaxError(`Unexpected token "${token.type}" of value "${token.value ?? ''}"`, token.cursor, this.tokenStream.expression);
+                    throw new SyntaxError(`Unexpected token "${token.type}" of value "${token.value ?? ''}"`, token.cursor, this.tokenStream.expression, undefined, undefined, {rawExpression: this.tokenStream._rawExpression});
                 }
         }
 
@@ -430,7 +434,7 @@ export default class Parser {
             else {
                 let current = this.tokenStream.current;
 
-                throw new SyntaxError(`A hash key must be a quoted string, a number, a name, or an expression enclosed in parentheses (unexpected token "${current.type}" of value "${current.value ?? ''}"`, current.cursor, this.tokenStream.expression);
+                throw new SyntaxError(`A hash key must be a quoted string, a number, a name, or an expression enclosed in parentheses (unexpected token "${current.type}" of value "${current.value ?? ''}"`, current.cursor, this.tokenStream.expression, undefined, undefined, {rawExpression: this.tokenStream._rawExpression});
             }
 
             this.tokenStream.expect(Token.PUNCTUATION_TYPE, ":", "A hash key must be followed by a colon (:)");
@@ -455,7 +459,7 @@ export default class Parser {
                 if (token.test(Token.PUNCTUATION_TYPE, '[')) {
                     // null-safe array access: foo?.[0]
                     if (!isNullSafe) {
-                        throw new SyntaxError('Expected name', token.cursor, this.tokenStream.expression);
+                        throw new SyntaxError('Expected name', token.cursor, this.tokenStream.expression, undefined, undefined, {rawExpression: this.tokenStream._rawExpression});
                     }
 
                     this.tokenStream.next();
@@ -483,7 +487,7 @@ export default class Parser {
                     // As a result, if $token is NOT an operator OR $token->value is NOT a valid property or method name, an exception shall be thrown.
                     (Token.OPERATOR_TYPE !== token.type || !/[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*/.test(token.value))
                 ) {
-                    throw new SyntaxError('Expected name', token.cursor, this.tokenStream.expression);
+                    throw new SyntaxError('Expected name', token.cursor, this.tokenStream.expression, undefined, undefined, {rawExpression: this.tokenStream._rawExpression});
                 }
 
                 let arg = new ConstantNode(token.value, true, isNullSafe),

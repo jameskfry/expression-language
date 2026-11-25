@@ -22,6 +22,58 @@ export default class ParsedExpression extends Expression {
         return this.nodes;
     }
 
+    evaluateAsync = async (functions, values) => {
+        const root = this.nodes;
+        return await (root.evaluateAsync ? root.evaluateAsync(functions, values) : root.evaluate(functions, values));
+    }
+
+    /**
+     * Traverses the expression's AST nodes in depth-first pre-order.
+     * The callback receives (node, parent, propertyOrIndex).
+     * Returning false from the callback skips children of the current node.
+     *
+     * @param {function(Node, Node|null, string|number|null): (boolean|void)} visitor
+     */
+    walk = (visitor) => {
+        if (this.nodes && typeof this.nodes.walk === 'function') {
+            this.nodes.walk(visitor);
+        }
+    }
+
+    /**
+     * Returns an array of unique variable names read by the expression, in order of first appearance.
+     *
+     * @returns {string[]}
+     */
+    getVariables = () => {
+        const variables = new Set();
+        this.walk((node) => {
+            if (node.name === 'NameNode' || node.name === 'NullCoalescedNameNode') {
+                if (node.attributes && node.attributes.name) {
+                    variables.add(node.attributes.name);
+                }
+            }
+        });
+        return Array.from(variables);
+    }
+
+    /**
+     * Returns an array of unique function names called by the expression, in order of first appearance.
+     *
+     * @returns {string[]}
+     */
+    getFunctions = () => {
+        const functions = new Set();
+        this.walk((node) => {
+            if (node.name === 'FunctionNode') {
+                if (node.attributes && node.attributes.name) {
+                    functions.add(node.attributes.name);
+                }
+            }
+        });
+        return Array.from(functions);
+    }
+
     static fromJSON(json) {
         const obj = typeof json === 'string' ? JSON.parse(json) : json;
 

@@ -57,6 +57,7 @@ jobs:
           gh release upload "${{ github.event.release.tag_name }}" \
             dist/expression-language.js \
             dist/expression-language.min.js \
+            dist/index.mjs \
             dist/index.d.ts \
             --clobber
 

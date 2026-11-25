@@ -38,6 +38,39 @@ export default class Node {
 
 
 
+    /**
+     * Traverses this node and all descendant nodes in depth-first pre-order.
+     * The visitor callback receives (node, parent, key).
+     * If the visitor returns false, traversal of the current node's children is skipped.
+     *
+     * @param {function(Node, Node|null, string|number|null): (boolean|void)} visitor
+     * @param {Node|null} [parent=null]
+     * @param {string|number|null} [key=null]
+     */
+    walk = (visitor, parent = null, key = null) => {
+        const shouldContinue = visitor(this, parent, key);
+        if (shouldContinue === false) {
+            return;
+        }
+
+        if (this.nodes) {
+            if (Array.isArray(this.nodes)) {
+                for (let i = 0; i < this.nodes.length; i++) {
+                    const child = this.nodes[i];
+                    if (child && typeof child.walk === 'function') {
+                        child.walk(visitor, this, i);
+                    }
+                }
+            } else if (typeof this.nodes === 'object') {
+                for (const [k, child] of Object.entries(this.nodes)) {
+                    if (child && typeof child.walk === 'function') {
+                        child.walk(visitor, this, k);
+                    }
+                }
+            }
+        }
+    };
+
     compile = (compiler) => {
         for (let node of Object.values(this.nodes)) {
             node.compile(compiler);
@@ -48,6 +81,15 @@ export default class Node {
         let results = [];
         for (let node of Object.values(this.nodes)) {
             results.push(node.evaluate(functions, values));
+        }
+
+        return results;
+    };
+
+    evaluateAsync = async (functions, values) => {
+        let results = [];
+        for (let node of Object.values(this.nodes)) {
+            results.push(await (node.evaluateAsync ? node.evaluateAsync(functions, values) : node.evaluate(functions, values)));
         }
 
         return results;
